@@ -1,0 +1,13 @@
+:root {
+  --boi-primary: #016837;
+  --boi-secondary: #8f8f8f;
+  --boi-success: #22c55e;
+  --boi-success-foreground: #ffffff;
+  --boi-danger: #ea2228;
+  --boi-danger-foreground: #ffffff;
+  --boi-surface: #ffffff;
+  --boi-surface-muted: #f3f4f6;
+  --boi-border: #e5e7eb;
+  --boi-text: #000000;
+  --boi-text-muted: #6b7280;
+}
