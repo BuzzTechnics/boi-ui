@@ -57,8 +57,8 @@ The published artifact is the **`dist/`** folder (see `"files"` in `package.json
 2. Commit, tag, and push:
 
    ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag v0.2.1
+   git push origin v0.2.1
    ```
 
 3. Publish to npm:
