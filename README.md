@@ -46,3 +46,23 @@ pnpm build
 pnpm type-check
 pnpm test
 ```
+
+## Releasing (`boi-ui`)
+
+The published artifact is the **`dist/`** folder (see `"files"` in `package.json`). `prepublishOnly` runs `npm run build` before publish.
+
+1. Bump **`version`** in `package.json` (semver).
+2. Commit, tag, and push:
+
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+3. Publish to npm (scoped name requires `--access public` if you rename to `@scope/boi-ui`):
+
+   ```bash
+   npm publish
+   ```
+
+4. Consumers: `npm install boi-ui` / `pnpm add boi-ui` (peer: `vue@^3.4`).
