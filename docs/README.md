@@ -1,15 +1,15 @@
-# boi-ui
+# @buzztech/boi-ui
 
 Vue 3 + TypeScript UI package for BOI, including EDOC (electronic document) bank statement integration components and composables.
 
 ## Installation
 
 ```bash
-npm install boi-ui vue
+npm install @buzztech/boi-ui vue
 # or
-pnpm add boi-ui vue
+pnpm add @buzztech/boi-ui vue
 # or
-yarn add boi-ui vue
+yarn add @buzztech/boi-ui vue
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ yarn add boi-ui vue
 
 ```vue
 <script setup>
-import { BoiButton } from 'boi-ui'
+import { BoiButton } from '@buzztech/boi-ui'
 </script>
 <template>
   <BoiButton label="Submit" variant="primary" />
@@ -31,7 +31,7 @@ import { BoiButton } from 'boi-ui'
 
 ```vue
 <script setup>
-import { EmtsIntegration } from 'boi-ui'
+import { EmtsIntegration } from '@buzztech/boi-ui'
 </script>
 <template>
   <EmtsIntegration
@@ -51,7 +51,7 @@ import { EmtsIntegration } from 'boi-ui'
 
 ```vue
 <script setup>
-import { BankStatementIntegration } from 'boi-ui'
+import { BankStatementIntegration } from '@buzztech/boi-ui'
 </script>
 <template>
   <BankStatementIntegration
@@ -72,7 +72,7 @@ import { BankStatementIntegration } from 'boi-ui'
 
 ```vue
 <script setup>
-import { FileInput } from 'boi-ui'
+import { FileInput } from '@buzztech/boi-ui'
 </script>
 <template>
   <FileInput
@@ -93,7 +93,7 @@ import { FileInput } from 'boi-ui'
 **useEdocBanks** — Load and cache EDOC-supported banks.
 
 ```ts
-import { useEdocBanks } from 'boi-ui'
+import { useEdocBanks } from '@buzztech/boi-ui'
 
 const { edocBanks, loading, error, loadBanksForStatement, invalidateCache } = useEdocBanks({
   get: (url) => axios.get(url).then(r => ({ data: r.data })),
@@ -108,7 +108,7 @@ await loadBanksForStatement()
 ### API helpers
 
 ```ts
-import { edocApi, bankStatementsApi } from 'boi-ui'
+import { edocApi, bankStatementsApi } from '@buzztech/boi-ui'
 
 edocApi.getBanks()           // '/api/edoc/banks'
 edocApi.initializeConsent()   // '/api/edoc/consent/initialize'

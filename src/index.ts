@@ -29,7 +29,7 @@ export type {
 } from './types/edoc'
 
 export function install(_app: App): void {
-  // Components can be registered here for app.use(boi-ui)
+  // Components can be registered here for app.use() when consuming this package
 }
 
 export default {

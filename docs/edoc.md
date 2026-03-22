@@ -1,4 +1,4 @@
-# EDOC / EMTS integration (boi-ui)
+# EDOC / EMTS integration (@buzztech/boi-ui)
 
 This package provides Vue components and composables for the EDOC (electronic document) bank statement flow: list supported banks, initialize consent, attach account, retrieve transactions (OTP or direct), and manual PDF upload.
 

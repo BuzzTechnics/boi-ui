@@ -1,6 +1,9 @@
 {
-  "name": "boi-ui",
-  "version": "0.1.0",
+  "name": "@buzztech/boi-ui",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.2.0",
   "description": "BOI Vue 3 TypeScript UI package",
   "type": "module",
   "keywords": [
