@@ -401,11 +401,19 @@ function createAfterUpload(statement: BankStatementRecord) {
 
 const isBankEdocSupported = (bankCode: string): boolean => {
   if (!bankCode || !edocBanks.value.length) return false
-  const bank = props.bankOptions.find((o) => String(o.value) === String(bankCode))
+  const bank =
+    props.bankOptions.find((o) => String(o.value) === String(bankCode)) ??
+    props.bankOptions.find((o) => String(o.label) === String(bankCode)) ??
+    props.bankOptions.find((o) => (o.shortName ? String(o.shortName) === String(bankCode) : false)) ??
+    null
+
+  const localCode = bank?.value ?? bankCode
   const names = [bank?.label ?? '', ...(bank?.searchKeywords ?? [])].filter(Boolean)
-  return edocBanks.value.some((b) =>
-    edocRowMatchesLocalBank(bankCode, b as unknown as Record<string, unknown>, names, true)
+  const matched = edocBanks.value.some((b) =>
+    edocRowMatchesLocalBank(String(localCode), b as unknown as Record<string, unknown>, names, true)
   )
+
+  return matched
 }
 
 const enabledEdocBanksList = computed(() =>
@@ -425,6 +433,8 @@ onMounted(async () => {
 onUnmounted(() => {
   stopPolling()
 })
+
+// (Debug logs removed) keep this component purely UI/state driven.
 </script>
 
 <template>
@@ -572,12 +582,7 @@ onUnmounted(() => {
               @statement-retrieved="onStatementRetrieved(account, $event)"
               @error="onEdocError"
             />
-            <p
-              v-if="account.statement_generated || account.edoc_status === 'completed'"
-              class="mt-3 text-sm font-medium text-green-800"
-            >
-              Succeeded.
-            </p>
+            <!-- Success state is rendered inside EmtsIntegration -->
           </div>
 
           <div v-if="!isBankEdocSupported(account.bank)" class="rounded-lg border border-gray-200 bg-white p-4">

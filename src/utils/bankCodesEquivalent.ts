@@ -44,5 +44,11 @@ export function edocRowMatchesLocalBank(
   const en = row.name
   if (typeof en !== 'string' || !en) return false
   const lower = en.toLowerCase()
-  return localBankNames.some((n) => n && lower.includes(n.toLowerCase()))
+  return localBankNames.some((n) => {
+    if (!n) return false
+    const nl = n.toLowerCase()
+    // Accept either direction, since providers may use abbreviations
+    // (e.g. "FCMB Bank" vs "First City Monument Bank").
+    return lower.includes(nl) || nl.includes(lower)
+  })
 }

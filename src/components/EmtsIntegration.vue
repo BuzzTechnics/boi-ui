@@ -3,11 +3,6 @@ import { computed, ref } from 'vue'
 import type { BankStatementRecord, EdocBank, BankOption } from '../types/edoc'
 import { edocApi } from '../api/edoc'
 import { edocRowMatchesLocalBank } from '../utils/bankCodesEquivalent'
-import BoiButton from './BoiButton.vue'
-
-/** Shared classes: compact black actions for OTP flow */
-const otpActionClass =
-  'inline-flex items-center justify-center rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 
 const props = withDefaults(
   defineProps<{
@@ -41,25 +36,49 @@ const emit = defineEmits<{
 const generatingStatement = ref(false)
 const submittingOtp = ref(false)
 
+function getSanitizedAccountNumber(accountNumber: string | undefined): string {
+  // EDOC + backend validation expects exactly 10 digits. Users may type spaces or other chars.
+  return String(accountNumber ?? '').replace(/\D/g, '')
+}
+
 function bankNames(bankCode: string): string[] {
-  const b = props.bankOptions.find((o) => String(o.value) === String(bankCode))
+  const b =
+    props.bankOptions.find((o) => String(o.value) === String(bankCode)) ??
+    props.bankOptions.find((o) => String(o.label) === String(bankCode)) ??
+    props.bankOptions.find((o) => (o.shortName ? String(o.shortName) === String(bankCode) : false)) ??
+    null
   return [b?.label ?? '', ...(b?.searchKeywords ?? [])].filter(Boolean)
 }
 
 function matchBank(bankCode: string, enabledOnly = false): EdocBank | undefined {
   if (!bankCode || !props.edocBanks.length) return undefined
+  const localBank =
+    props.bankOptions.find((o) => String(o.value) === String(bankCode)) ??
+    props.bankOptions.find((o) => String(o.label) === String(bankCode)) ??
+    props.bankOptions.find((o) => (o.shortName ? String(o.shortName) === String(bankCode) : false)) ??
+    null
+  const localCode = localBank?.value ?? bankCode
   const names = bankNames(bankCode)
-  return props.edocBanks.find((b) =>
-    edocRowMatchesLocalBank(bankCode, b as unknown as Record<string, unknown>, names, enabledOnly)
+
+  const matched = props.edocBanks.find((b) =>
+    edocRowMatchesLocalBank(String(localCode), b as unknown as Record<string, unknown>, names, enabledOnly)
   )
+
+  return matched
 }
 
 const getEdocBank = (code: string) => matchBank(code, false)
 const isBankEdocSupported = (code: string) => !!matchBank(code, true)
-const hasBankInstructions = computed(() => !!(getEdocBank(props.account.bank)?.bankInstructions?.length))
+const hasBankInstructions = computed(() => !!getEdocBank(props.account.bank)?.bankInstructions?.length)
 const canRequestOtp = computed(() => {
   const a = props.account
-  return !!a.bank && a.account_number?.length === 10 && !generatingStatement.value && !submittingOtp.value
+  const digits = getSanitizedAccountNumber(a.account_number)
+  return !!a.bank && digits.length === 10 && !generatingStatement.value && !submittingOtp.value
+})
+
+const canRetrieveStatement = computed(() => {
+  const digits = getSanitizedAccountNumber(props.account.account_number)
+  return !!props.account.bank && digits.length === 10 && !submittingOtp.value
 })
 const canSubmitOtp = computed(() => !!props.account.otp && !submittingOtp.value)
 
@@ -81,7 +100,7 @@ const consentPayload = (email: string) => ({
   industrialSector: props.industrialSector ?? undefined,
 })
 
-async function consentAndAttach(edocBank: EdocBank) {
+async function consentAndAttach(edocBank: EdocBank, accountNumberDigits: string) {
   const email = props.account.email || props.companyEmail || ''
   const res = await props.api.post(edocPath(edocApi.initializeConsent()), consentPayload(email))
   const data = res?.data as { success?: boolean; data?: { data?: { consentId?: string } }; message?: string }
@@ -98,7 +117,7 @@ async function consentAndAttach(edocBank: EdocBank) {
   await props.api.post(edocPath(edocApi.attachAccount()), {
     consentId,
     bankId,
-    accountNumber: props.account.account_number,
+    accountNumber: accountNumberDigits,
     accountType: 'Business',
     statementDuration: '12',
     monthType: 'Period',
@@ -110,11 +129,12 @@ async function consentAndAttach(edocBank: EdocBank) {
 async function generateStatement() {
   const edocBank = getEdocBank(props.account.bank)
   if (!props.account.bank) return emit('error', 'Please select a bank')
-  if (props.account.account_number?.length !== 10) return emit('error', 'Please provide a valid 10-digit account number')
+  const digits = getSanitizedAccountNumber(props.account.account_number)
+  if (digits.length !== 10) return emit('error', 'Please provide a valid 10-digit account number')
   if (!edocBank) return emit('error', 'Selected bank does not support electronic statement retrieval')
   generatingStatement.value = true
   try {
-    await consentAndAttach(edocBank)
+    await consentAndAttach(edocBank, digits)
   } catch (err) {
     emit('error', errMsg(err))
   } finally {
@@ -143,13 +163,14 @@ async function submitOtp() {
 
 async function retrieveStatementDirect() {
   const edocBank = getEdocBank(props.account.bank)
-  if (!props.account.bank || props.account.account_number?.length !== 10) {
+  const digits = getSanitizedAccountNumber(props.account.account_number)
+  if (!props.account.bank || digits.length !== 10) {
     return emit('error', 'Please select a bank and provide a valid 10-digit account number')
   }
   if (!edocBank) return emit('error', 'Selected bank does not support electronic statement retrieval')
   submittingOtp.value = true
   try {
-    const consentId = await consentAndAttach(edocBank)
+    const consentId = await consentAndAttach(edocBank, digits)
     const res = await props.api.post(edocPath(edocApi.getTransactions()), {
       consentId,
       verificationCode: '',
@@ -169,47 +190,168 @@ async function retrieveStatementDirect() {
 <template>
   <div class="boi-emts-integration space-y-4">
     <div v-if="isBankEdocSupported(account.bank)">
-      <template v-if="hasBankInstructions && !account.statement_generated">
-        <div class="boi-emts-instructions rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
-          <p class="mb-2 font-semibold text-amber-900">Bank-specific instructions</p>
-          <ol class="list-inside list-decimal space-y-1 text-amber-800">
-            <li v-for="(instruction, idx) in getEdocBank(account.bank)?.bankInstructions" :key="idx">{{ instruction }}</li>
-          </ol>
+      <!-- Success state -->
+      <div v-if="account.statement_generated" class="rounded-lg border-2 border-primary bg-primary/5 p-4">
+        <div class="mb-2 flex items-center gap-2">
+          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6L9 17l-5-5"></path>
+            </svg>
+          </div>
+          <h5 class="text-sm font-bold text-primary">Statement Generated Successfully and sent to Bank of Industry!</h5>
         </div>
-        <BoiButton
-          :label="submittingOtp ? 'Retrieving…' : 'Retrieve statement'"
-          variant="primary"
-          :disabled="!canRequestOtp || disabled"
-          @click="retrieveStatementDirect"
-        />
-      </template>
-      <template v-else-if="!hasBankInstructions && !account.statement_generated">
-        <button
-          v-if="!account.showOtpInput"
-          type="button"
-          :class="otpActionClass"
-          :disabled="!canRequestOtp || disabled"
-          @click="generateStatement"
-        >
-          {{ generatingStatement ? 'Sending OTP…' : 'Send OTP' }}
-        </button>
-        <div v-else class="boi-emts-otp space-y-3 rounded-lg border-2 border-primary bg-primary/5 p-4">
-          <p class="text-sm font-medium text-gray-700">Enter the OTP sent to your bank-registered email.</p>
-          <div class="flex flex-wrap items-end gap-3">
-            <div class="min-w-[140px]">
-              <label class="mb-1 block text-xs font-medium text-gray-600">OTP code</label>
-              <input v-model="account.otp" type="text" maxlength="6" placeholder="6-digit OTP" class="w-full rounded border border-gray-300 px-3 py-2 text-lg tracking-widest" />
+        <p class="text-xs text-primary">Your bank statement has been automatically retrieved and saved.</p>
+      </div>
+
+      <template v-else>
+        <!-- Banks WITH instructions (simplified flow) -->
+        <template v-if="hasBankInstructions && !account.statement_generated">
+          <div class="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 text-sm">
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5">
+                <svg viewBox="0 0 24 24" class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="8"></line>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="mb-2 text-sm font-bold text-blue-900">Electronic Bank Statement Required</h4>
+                <p class="mb-3 text-xs text-blue-800">
+                  {{ getEdocBank(account.bank)?.name || 'Your bank' }} supports automatic statement generation. Please follow the bank-specific instructions below before retrieving your statement.
+                </p>
+              </div>
             </div>
+          </div>
+
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <div class="flex items-start gap-2">
+              <div class="mt-0.5">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="8"></line>
+                </svg>
+              </div>
+              <div>
+                <p class="mb-2 font-semibold text-amber-900">Bank-Specific Instructions:</p>
+                <ol class="list-inside list-decimal space-y-2 text-xs text-amber-800">
+                  <li v-for="(instruction, idx) in getEdocBank(account.bank)?.bankInstructions" :key="idx">{{ instruction }}</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-lg border-2 border-primary bg-white p-4">
+            <div class="mb-3 flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6L9 17l-5-5"></path>
+                </svg>
+              </div>
+              <h5 class="text-sm font-bold text-gray-900">Retrieve Statement</h5>
+            </div>
+            <p class="mb-3 !text-base text-gray-600">After completing the instructions above, click the button below to retrieve your bank statement.</p>
             <button
               type="button"
-              :class="otpActionClass"
-              :disabled="!canSubmitOtp || disabled"
-              @click="submitOtp"
+              class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium"
+              :disabled="!canRetrieveStatement || disabled"
+              @click="retrieveStatementDirect"
             >
-              Verify OTP
+              {{ submittingOtp ? 'Retrieving Statement…' : 'Retrieve Statement' }}
             </button>
           </div>
-        </div>
+        </template>
+
+        <!-- Banks WITHOUT instructions (standard OTP flow) -->
+        <template v-else-if="!hasBankInstructions && !account.statement_generated">
+          <div class="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 text-sm">
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5">
+                <svg viewBox="0 0 24 24" class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="8"></line>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="mb-2 text-sm font-bold text-blue-900">Electronic Bank Statement Required</h4>
+                <p class="mb-3 text-xs text-blue-800">
+                  {{ getEdocBank(account.bank)?.name || 'Your bank' }} supports automatic statement generation.
+                  <strong>You must complete the OTP verification process below</strong> to retrieve your bank statement electronically.
+                </p>
+                <div class="rounded-md bg-blue-100 p-3">
+                  <p class="mb-2 text-xs font-semibold text-blue-900">Follow these steps:</p>
+                  <ol class="ml-4 list-decimal space-y-1.5 text-xs text-blue-800">
+                    <li><strong>Step 1:</strong> Click &quot;Send OTP&quot; button below</li>
+                    <li><strong>Step 2:</strong> Check your <strong>bank account&apos;s registered email</strong> for the verification code</li>
+                    <li><strong>Step 3:</strong> Enter the code and click &quot;Verify OTP&quot;</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!account.showOtpInput" class="rounded-lg border-2 border-primary bg-white p-4">
+            <div class="mb-3 flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                1
+              </div>
+              <h5 class="text-sm font-bold text-gray-900">Request OTP</h5>
+            </div>
+            <p class="mb-3 !text-base text-gray-600">
+              Click the button below to request an OTP. The verification code will be sent to the
+              <strong>email address or phone number registered with your bank account</strong>.
+            </p>
+            <button
+              type="button"
+              class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex w-full items-center justify-center rounded-md px-3 py-2 text-sm font-medium"
+              :disabled="!canRequestOtp || disabled"
+              @click="generateStatement"
+            >
+              {{ generatingStatement ? 'Sending OTP…' : 'Send OTP' }}
+            </button>
+          </div>
+
+          <div v-else class="rounded-lg border-2 border-primary bg-primary/5 p-4">
+            <div class="mb-3 flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                2
+              </div>
+              <h5 class="text-sm font-bold text-gray-900">Enter OTP Code</h5>
+            </div>
+            <div class="mb-3 rounded-md bg-primary/10 p-2">
+              <p class="text-xs text-primary">
+                <strong>Check the email registered with your bank account</strong> for the verification code. It may take 1-2 minutes to arrive.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+              <div class="md:col-span-2">
+                <label class="mb-1 block text-xs font-medium text-gray-600" :for="`otp_${account.id}`">OTP Code</label>
+                <input
+                  :id="`otp_${account.id}`"
+                  v-model="account.otp"
+                  placeholder="Enter 6-digit OTP"
+                  type="text"
+                  maxlength="6"
+                  class="w-full rounded border border-gray-200 bg-white px-3 py-2 text-lg tracking-widest focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Action</label>
+                <button
+                  type="button"
+                  class="w-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium"
+                  :disabled="!canSubmitOtp || disabled"
+                  @click="submitOtp"
+                >
+                  {{ submittingOtp ? 'Verifying…' : 'Verify OTP' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
       </template>
     </div>
     <div v-if="account.edoc_status === 'failed'" class="text-sm text-red-600">Statement retrieval failed. Please try again or upload manually.</div>
