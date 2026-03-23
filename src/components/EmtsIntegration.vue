@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { BankStatementRecord, EdocBank, BankOption } from '../types/edoc'
 import { edocApi } from '../api/edoc'
+import { edocRowMatchesLocalBank } from '../utils/bankCodesEquivalent'
 import BoiButton from './BoiButton.vue'
 
 /** Shared classes: compact black actions for OTP flow */
@@ -41,18 +42,16 @@ const generatingStatement = ref(false)
 const submittingOtp = ref(false)
 
 function bankNames(bankCode: string): string[] {
-  const b = props.bankOptions.find((o) => o.value === bankCode)
+  const b = props.bankOptions.find((o) => String(o.value) === String(bankCode))
   return [b?.label ?? '', ...(b?.searchKeywords ?? [])].filter(Boolean)
 }
 
 function matchBank(bankCode: string, enabledOnly = false): EdocBank | undefined {
   if (!bankCode || !props.edocBanks.length) return undefined
   const names = bankNames(bankCode)
-  return props.edocBanks.find((b) => {
-    const code = b.bankCode === bankCode || b.code === bankCode
-    const name = names.some((n) => b.name?.toLowerCase().includes(n.toLowerCase()))
-    return (code || name) && (!enabledOnly || b.enabled !== false)
-  })
+  return props.edocBanks.find((b) =>
+    edocRowMatchesLocalBank(bankCode, b as unknown as Record<string, unknown>, names, enabledOnly)
+  )
 }
 
 const getEdocBank = (code: string) => matchBank(code, false)
@@ -90,9 +89,15 @@ async function consentAndAttach(edocBank: EdocBank) {
   const consentId = data?.data?.data?.consentId
   if (!consentId) throw new Error('No consent ID returned')
   emit('update:consentId', consentId)
+  const row = edocBank as EdocBank & { id?: number }
+  const rawBankId = row.bankId ?? row.id
+  const bankId = typeof rawBankId === 'number' ? rawBankId : parseInt(String(rawBankId), 10)
+  if (!Number.isFinite(bankId) || bankId < 1) {
+    throw new Error('Invalid EDOC bank id for selected bank')
+  }
   await props.api.post(edocPath(edocApi.attachAccount()), {
     consentId,
-    bankId: edocBank.bankId,
+    bankId,
     accountNumber: props.account.account_number,
     accountType: 'Business',
     statementDuration: '12',

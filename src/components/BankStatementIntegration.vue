@@ -11,6 +11,7 @@ import BankSelect from './BankSelect.vue'
 import EmtsIntegration from './EmtsIntegration.vue'
 import FileInput from './FileInput.vue'
 import type { VerifyBankAccountFn } from '../composables/useAccountVerification'
+import { edocRowMatchesLocalBank } from '../utils/bankCodesEquivalent'
 
 const props = withDefaults(
   defineProps<{
@@ -157,7 +158,7 @@ function onStatementFileUploaded(statement: BankStatementRecord, path: string) {
 }
 
 function getStatementLabel(account: BankStatementRecord, index: number): string {
-  const bank = props.bankOptions.find((b) => b.value === account.bank)?.label ?? ''
+  const bank = props.bankOptions.find((b) => String(b.value) === String(account.bank))?.label ?? ''
   const num = account.account_number ?? ''
   if (bank && num) return `${bank} (${num})`
   if (bank) return bank
@@ -400,13 +401,11 @@ function createAfterUpload(statement: BankStatementRecord) {
 
 const isBankEdocSupported = (bankCode: string): boolean => {
   if (!bankCode || !edocBanks.value.length) return false
-  const bank = props.bankOptions.find((o) => o.value === bankCode)
+  const bank = props.bankOptions.find((o) => String(o.value) === String(bankCode))
   const names = [bank?.label ?? '', ...(bank?.searchKeywords ?? [])].filter(Boolean)
-  return edocBanks.value.some((b) => {
-    const codeMatch = b.bankCode === bankCode || b.code === bankCode
-    const nameMatch = names.some((n) => b.name?.toLowerCase().includes(n.toLowerCase()))
-    return (codeMatch || nameMatch) && b.enabled !== false
-  })
+  return edocBanks.value.some((b) =>
+    edocRowMatchesLocalBank(bankCode, b as unknown as Record<string, unknown>, names, true)
+  )
 }
 
 const enabledEdocBanksList = computed(() =>
