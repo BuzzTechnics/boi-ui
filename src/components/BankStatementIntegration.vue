@@ -441,7 +441,7 @@ onUnmounted(() => {
   <fieldset
     ref="rootRef"
     :disabled="isFormDisabled"
-    class="boi-bank-statement-integration w-full max-w-full overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+    class="grid boi-bank-statement-integration w-full max-w-full overflow-x-hidden rounded-xl bg-white shadow-sm"
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
@@ -449,7 +449,7 @@ onUnmounted(() => {
       <h2 class="text-lg font-bold text-slate-900">Company Bank Statements</h2>
     </div>
 
-    <div class="min-w-0 px-4 pb-4 md:px-6 md:pb-6">
+    <div class="min-w-0 pb-4 md:px-6 md:pb-6">
       <!-- Info: Electronic statement retrieval -->
       <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm sm:p-4">
         <div class="flex flex-col gap-2 text-blue-900 sm:block">
@@ -509,7 +509,7 @@ onUnmounted(() => {
           v-for="(account, index) in limitedStatements"
           :key="account.id"
           v-show="activeIndex === index"
-          class="mt-6 space-y-6 rounded-xl border border-gray-100 bg-gray-50/50 p-4 md:p-6"
+          class="mt-6 space-y-6 rounded-xl border border-gray-100 bg-gray-50/50 py-4 md:py-6"
         >
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <h4
