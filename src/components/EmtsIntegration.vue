@@ -188,7 +188,7 @@ async function retrieveStatementDirect() {
 </script>
 
 <template>
-  <div class="boi-emts-integration space-y-4">
+  <div class="boi-emts-integration min-w-0 space-y-4 overflow-x-hidden">
     <div v-if="isBankEdocSupported(account.bank)">
       <!-- Success state -->
       <div v-if="account.statement_generated" class="rounded-lg border-2 border-primary bg-primary/5 p-4">
@@ -198,9 +198,9 @@ async function retrieveStatementDirect() {
               <path d="M20 6L9 17l-5-5"></path>
             </svg>
           </div>
-          <h5 class="text-sm font-bold text-primary">Statement Generated Successfully and sent to Bank of Industry!</h5>
+          <h5 class="min-w-0 break-words text-sm font-bold text-primary">Statement Generated Successfully and sent to Bank of Industry!</h5>
         </div>
-        <p class="text-xs text-primary">Your bank statement has been automatically retrieved and saved.</p>
+        <p class="break-words text-xs text-primary">Your bank statement has been automatically retrieved and saved.</p>
       </div>
 
       <template v-else>
@@ -215,9 +215,9 @@ async function retrieveStatementDirect() {
                   <line x1="12" y1="8" x2="12" y2="8"></line>
                 </svg>
               </div>
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <h4 class="mb-2 text-sm font-bold text-blue-900">Electronic Bank Statement Required</h4>
-                <p class="mb-3 text-xs text-blue-800">
+                <p class="mb-3 break-words text-xs text-blue-800">
                   {{ getEdocBank(account.bank)?.name || 'Your bank' }} supports automatic statement generation. Please follow the bank-specific instructions below before retrieving your statement.
                 </p>
               </div>
@@ -233,7 +233,7 @@ async function retrieveStatementDirect() {
                   <line x1="12" y1="8" x2="12" y2="8"></line>
                 </svg>
               </div>
-              <div>
+              <div class="min-w-0">
                 <p class="mb-2 font-semibold text-amber-900">Bank-Specific Instructions:</p>
                 <ol class="list-inside list-decimal space-y-2 text-xs text-amber-800">
                   <li v-for="(instruction, idx) in getEdocBank(account.bank)?.bankInstructions" :key="idx">{{ instruction }}</li>
@@ -251,10 +251,10 @@ async function retrieveStatementDirect() {
               </div>
               <h5 class="text-sm font-bold text-gray-900">Retrieve Statement</h5>
             </div>
-            <p class="mb-3 !text-base text-gray-600">After completing the instructions above, click the button below to retrieve your bank statement.</p>
+            <p class="mb-3 break-words !text-base text-gray-600">After completing the instructions above, click the button below to retrieve your bank statement.</p>
             <button
               type="button"
-              class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium"
+              class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex w-full items-center justify-center rounded-md px-3 py-2 text-sm font-medium sm:w-auto"
               :disabled="!canRetrieveStatement || disabled"
               @click="retrieveStatementDirect"
             >
@@ -274,9 +274,9 @@ async function retrieveStatementDirect() {
                   <line x1="12" y1="8" x2="12" y2="8"></line>
                 </svg>
               </div>
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <h4 class="mb-2 text-sm font-bold text-blue-900">Electronic Bank Statement Required</h4>
-                <p class="mb-3 text-xs text-blue-800">
+                <p class="mb-3 break-words text-xs text-blue-800">
                   {{ getEdocBank(account.bank)?.name || 'Your bank' }} supports automatic statement generation.
                   <strong>You must complete the OTP verification process below</strong> to retrieve your bank statement electronically.
                 </p>
@@ -299,7 +299,7 @@ async function retrieveStatementDirect() {
               </div>
               <h5 class="text-sm font-bold text-gray-900">Request OTP</h5>
             </div>
-            <p class="mb-3 !text-base text-gray-600">
+            <p class="mb-3 break-words !text-base text-gray-600">
               Click the button below to request an OTP. The verification code will be sent to the
               <strong>email address or phone number registered with your bank account</strong>.
             </p>

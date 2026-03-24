@@ -451,21 +451,23 @@ onUnmounted(() => {
 
     <div class="px-4 pb-4 md:px-6 md:pb-6">
       <!-- Info: Electronic statement retrieval -->
-      <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
-        <p class="text-blue-900">
-          Some banks support <strong>Electronic Bank Statement Retrieval</strong>, so you may not need to upload a PDF.
+      <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm sm:p-4">
+        <div class="flex flex-col gap-2 text-blue-900 sm:block">
+          <p class="leading-relaxed">
+            Some banks support <strong>Electronic Bank Statement Retrieval</strong>, so you may not need to upload a PDF.
+            <span v-if="!showEdocBanksList" class="sm:inline"> supported banks.</span>
+          </p>
           <button
             type="button"
             @click="showEdocBanksList = !showEdocBanksList"
-            class="ml-1 font-semibold text-blue-700 underline hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded"
+            class="self-start rounded font-semibold text-blue-700 underline hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 sm:ml-1 sm:inline"
           >
-            {{ showEdocBanksList ? 'Hide' : 'See' }}
+            {{ showEdocBanksList ? 'Hide supported banks' : 'See supported banks' }}
           </button>
-          {{ showEdocBanksList ? '' : ' supported banks.' }}
-        </p>
-        <div v-if="showEdocBanksList && enabledEdocBanksList.length" class="mt-3 rounded-md bg-white/80 border border-blue-100 p-3">
+        </div>
+        <div v-if="showEdocBanksList && enabledEdocBanksList.length" class="mt-3 rounded-md border border-blue-100 bg-white/80 p-3">
           <p class="mb-2 text-xs font-semibold text-blue-900">Banks that support electronic statement retrieval:</p>
-          <ul class="list-inside list-disc space-y-0.5 text-xs text-blue-800 columns-2 gap-x-4">
+          <ul class="list-inside list-disc space-y-0.5 text-xs text-blue-800 sm:columns-2 sm:gap-x-4">
             <li v-for="(name, idx) in enabledEdocBanksList" :key="idx">{{ name }}</li>
           </ul>
         </div>
@@ -488,12 +490,13 @@ onUnmounted(() => {
 
       <template v-else>
         <!-- Account tabs -->
-        <div v-if="limitedStatements.length" class="flex overflow-x-auto pb-2 gap-1 -mx-1">
+        <div v-if="limitedStatements.length" class="-mx-1 flex gap-1 overflow-x-auto pb-2">
           <button
             v-for="(account, index) in limitedStatements"
             :key="account.id"
             type="button"
-            class="shrink-0 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+            :title="getStatementLabel(account, index)"
+            class="max-w-[85vw] shrink-0 truncate whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:max-w-none"
             :class="activeIndex === index ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
             @click="activeIndex = index"
           >
@@ -508,16 +511,22 @@ onUnmounted(() => {
           v-show="activeIndex === index"
           class="mt-6 space-y-6 rounded-xl border border-gray-100 bg-gray-50/50 p-4 md:p-6"
         >
-          <div class="flex items-center justify-between gap-4">
-            <h4 class="border-b-2 border-primary pb-1 text-base font-semibold text-slate-900">{{ getStatementLabel(account, index) }}</h4>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <h4
+              :title="getStatementLabel(account, index)"
+              class="min-w-0 flex-1 truncate border-b-2 border-primary pb-1 text-base font-semibold text-slate-900"
+            >
+              {{ getStatementLabel(account, index) }}
+            </h4>
             <button
               type="button"
-              class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+              class="inline-flex shrink-0 items-center self-start rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:self-auto"
               :disabled="!canRemoveAccount || isFormDisabled"
               @click="handleRemoveAccount(account)"
             >
-              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              Remove account
+              <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <span class="hidden sm:inline">Remove account</span>
+              <span class="sm:hidden">Remove</span>
             </button>
           </div>
 
