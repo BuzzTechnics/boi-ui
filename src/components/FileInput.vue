@@ -154,7 +154,8 @@ async function handleChange(e: Event) {
     formData.append('folder', 'documents')
     if (props.uploadContext) formData.append('context', props.uploadContext)
     try {
-      const res = await props.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      // Do not set Content-Type — axios must set multipart boundary. Same pattern as BankStatementIntegration.
+      const res = await props.post(url, formData)
       const data = res?.data as { success?: boolean; path?: string; url?: string; message?: string } | undefined
       if (data?.success && data?.path) {
         fileName.value = file.name
