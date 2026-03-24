@@ -17,7 +17,7 @@ export type { VerifyBankAccountFn, VerificationState } from './composables/useAc
 export { edocApi } from './api/edoc'
 export type { EdocApi } from './api/edoc'
 export { bankStatementsApi, bankStatementsUrls } from './api/bankStatements'
-export { filesApi } from './api/files'
+export { filesApi, FILES_API_UPLOAD_PATH, withFilesIntegrationBase, boiFilesApiBase } from './api/files'
 
 export type {
   EdocBank,

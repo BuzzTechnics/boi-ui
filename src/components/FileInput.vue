@@ -2,6 +2,21 @@
 import { computed, ref, watch } from 'vue'
 import { filesApi } from '../api/files'
 
+/** When the upload target is another origin (direct boi-api URL), prime Sanctum before POST. */
+async function ensureSanctumForUploadUrl(uploadUrl: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const resolved = new URL(uploadUrl, window.location.origin)
+    if (resolved.origin === window.location.origin) return
+    await fetch(`${resolved.origin}/sanctum/csrf-cookie`, {
+      credentials: 'include',
+      method: 'GET',
+    })
+  } catch {
+    /* non-fatal */
+  }
+}
+
 const props = withDefaults(
   defineProps<{
     modelValue?: string
@@ -20,7 +35,7 @@ const props = withDefaults(
     /**
      * Base URL for “View document” (no trailing slash). Use the same host as file uploads when they go
      * through boi-api or a proxy, e.g. `https://glow.test/api/boi-api` → `{base}/api/files/view?path=…`
-     * (presign runs on boi-api). If unset, uses `filesApi.view()` (consuming SPA origin / VITE_FILES_API_BASE).
+     * (presign runs on boi-api). If unset, uses `filesApi.view()` (default `/api/boi-api` proxy; see `boiFilesApiBase`).
      */
     viewApiBase?: string
     /**
@@ -149,6 +164,7 @@ async function handleChange(e: Event) {
   if (props.uploadToServer && props.post) {
     uploading.value = true
     const url = props.uploadUrl ?? filesApi.upload()
+    await ensureSanctumForUploadUrl(url)
     const formData = new FormData()
     formData.append('file', file)
     formData.append('folder', 'documents')

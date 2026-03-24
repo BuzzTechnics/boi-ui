@@ -5,7 +5,7 @@ import { useEdocBanks } from '../composables/useEdocBanks'
 import { useAccountVerification } from '../composables/useAccountVerification'
 import { bankStatementsApi } from '../api/bankStatements'
 import { edocApi } from '../api/edoc'
-import { filesApi } from '../api/files'
+import { FILES_API_UPLOAD_PATH } from '../api/files'
 import Button from './Button.vue'
 import BankSelect from './BankSelect.vue'
 import EmtsIntegration from './EmtsIntegration.vue'
@@ -107,7 +107,7 @@ const urls = computed(() =>
 )
 
 const fileUploadUrl = computed(() =>
-  props.integrationBaseUrl ? withIntegrationOrigin(filesApi.upload()) : undefined
+  props.integrationBaseUrl ? withIntegrationOrigin(FILES_API_UPLOAD_PATH) : undefined
 )
 
 /** Same base as uploads (boi-api or `/api/boi-api` proxy) so `/api/files/view` presigns there. */

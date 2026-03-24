@@ -1,13 +1,26 @@
-import { describe, it, expect } from 'vitest'
-import { filesApi } from '../../src/api/files'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { filesApi, boiFilesApiBase } from '../../src/api/files'
 
 describe('filesApi', () => {
-  it('upload returns path', () => {
-    expect(filesApi.upload()).toBe('/api/files/upload')
+  beforeEach(() => {
+    vi.stubEnv('VITE_BOI_FILES_API_BASE', undefined)
   })
 
-  it('view returns URL with encoded path', () => {
-    expect(filesApi.view('documents/a b.pdf')).toContain('path=')
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('defaults to /api/boi-api (portal proxy)', () => {
+    expect(boiFilesApiBase()).toBe('/api/boi-api')
+    expect(filesApi.upload()).toBe('/api/boi-api/api/files/upload')
+    expect(filesApi.view('documents/a b.pdf')).toContain('/api/boi-api/api/files/view')
     expect(filesApi.view('documents/a b.pdf')).toContain(encodeURIComponent('documents/a b.pdf'))
+  })
+
+  it('empty VITE_BOI_FILES_API_BASE uses shell /api/files/*', () => {
+    vi.stubEnv('VITE_BOI_FILES_API_BASE', '')
+    expect(boiFilesApiBase()).toBe('')
+    expect(filesApi.upload()).toBe('/api/files/upload')
+    expect(filesApi.view('x.pdf')).toBe('/api/files/view?path=' + encodeURIComponent('x.pdf'))
   })
 })
