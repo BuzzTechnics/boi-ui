@@ -441,7 +441,7 @@ onUnmounted(() => {
   <fieldset
     ref="rootRef"
     :disabled="isFormDisabled"
-    class="boi-bank-statement-integration rounded-xl border border-gray-200 bg-white shadow-sm"
+    class="boi-bank-statement-integration w-full max-w-full overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
@@ -449,7 +449,7 @@ onUnmounted(() => {
       <h2 class="text-lg font-bold text-slate-900">Company Bank Statements</h2>
     </div>
 
-    <div class="px-4 pb-4 md:px-6 md:pb-6">
+    <div class="min-w-0 px-4 pb-4 md:px-6 md:pb-6">
       <!-- Info: Electronic statement retrieval -->
       <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm sm:p-4">
         <div class="flex flex-col gap-2 text-blue-900 sm:block">
@@ -490,13 +490,13 @@ onUnmounted(() => {
 
       <template v-else>
         <!-- Account tabs -->
-        <div v-if="limitedStatements.length" class="-mx-1 flex gap-1 overflow-x-auto pb-2">
+        <div v-if="limitedStatements.length" class="flex w-full max-w-full snap-x snap-mandatory gap-1 overflow-x-auto pb-2 whitespace-nowrap [touch-action:pan-x] [-webkit-overflow-scrolling:touch]">
           <button
             v-for="(account, index) in limitedStatements"
             :key="account.id"
             type="button"
             :title="getStatementLabel(account, index)"
-            class="max-w-[85vw] shrink-0 truncate whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:max-w-none"
+            class="snap-start max-w-[85vw] shrink-0 truncate whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:max-w-none"
             :class="activeIndex === index ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
             @click="activeIndex = index"
           >
