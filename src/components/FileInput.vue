@@ -29,6 +29,8 @@ const props = withDefaults(
     uploadToServer?: boolean
     showRequirements?: boolean
     uploadContext?: string
+    /** S3 folder segment for boi-api `FileController` (default `documents`). */
+    uploadFolder?: string
     afterUpload?: (path: string) => void
     /** Upload URL (default: filesApi.upload()) */
     uploadUrl?: string
@@ -66,6 +68,7 @@ const props = withDefaults(
     ],
     uploadToServer: true,
     showRequirements: true,
+    uploadFolder: 'documents',
   }
 )
 
@@ -167,7 +170,7 @@ async function handleChange(e: Event) {
     await ensureSanctumForUploadUrl(url)
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('folder', 'documents')
+    formData.append('folder', props.uploadFolder || 'documents')
     if (props.uploadContext) formData.append('context', props.uploadContext)
     try {
       // Do not set Content-Type — axios must set multipart boundary. Same pattern as BankStatementIntegration.
