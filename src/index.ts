@@ -7,6 +7,7 @@ export { default as EmtsIntegration } from './components/EmtsIntegration.vue'
 export { default as BankStatementIntegration } from './components/BankStatementIntegration.vue'
 export { default as BankSelect } from './components/BankSelect.vue'
 export { default as FileInput } from './components/FileInput.vue'
+export { default as ApplicationFormStepper } from './components/ApplicationFormStepper.vue'
 
 export { useEdocBanks } from './composables/useEdocBanks'
 export type { UseEdocBanksOptions } from './composables/useEdocBanks'
