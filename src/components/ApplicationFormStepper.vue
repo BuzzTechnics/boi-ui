@@ -12,7 +12,7 @@
                             :key="section.key"
                             :data-step-key="section.key"
                             type="button"
-                            @click="handleMobileStepClick(section.key, $event)"
+                            @click="handleMobileStepClick(section.key)"
                             class="flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors duration-150"
                             :class="modelValue === section.key ? 'bg-primary/15' : 'hover:bg-primary/10'"
                         >
