@@ -1,19 +1,19 @@
 /**
- * Centralized boi-api file routes (`FileController`). Shell apps (Glow, portal) forward them through the
- * same-origin `/api/boi-api/*` proxy — consumers can use `FileInput` with only `:post` (axios), no URL props.
+ * File upload / view on the host app (`buzztech/boi-backend` registers `/api/files/upload` and `/api/files/view`
+ * using that app’s `filesystems.disks.s3`).
  *
- * - Default base: `/api/boi-api` (relative).
- * - Override: `VITE_BOI_FILES_API_BASE` (e.g. `https://api.example.com` for direct cross-origin).
- * - Shell-only `FileController` / local disk: set `VITE_BOI_FILES_API_BASE=` (empty) → `/api/files/…` on the shell.
+ * - Default: same origin only — `/api/files/*` (no base prefix).
+ * - Centralized boi-api only when needed (e.g. some flows): set `VITE_BOI_FILES_API_BASE` to `/api/boi-api`
+ *   or `https://api.example.com` (must match how the SPA reaches that API).
  *
- * When building URLs with a separate `integrationBaseUrl`, use `FILES_API_UPLOAD_PATH` + `withFilesIntegrationBase`,
- * not `filesApi.upload()`, so the base is not applied twice.
+ * Bank statements / EDOC still pass `integrationBaseUrl` into `BankStatementIntegration` and use
+ * `FILES_API_UPLOAD_PATH` + `withFilesIntegrationBase` so uploads hit boi-api while generic `FileInput` uses the host.
  */
 export const FILES_API_UPLOAD_PATH = '/api/files/upload' as const
 
 const VIEW_SUFFIX = '/api/files/view' as const
 
-/** Base for boi-api file upload/view (no trailing slash). Empty = shell app root (legacy local disk). */
+/** Base URL for file routes (no trailing slash). Empty = host app `/api/files/*`. */
 export function boiFilesApiBase(): string {
   const raw = import.meta.env.VITE_BOI_FILES_API_BASE as string | undefined
   if (raw === '') {
@@ -22,7 +22,7 @@ export function boiFilesApiBase(): string {
   if (raw != null && String(raw).trim() !== '') {
     return String(raw).replace(/\/$/, '')
   }
-  return '/api/boi-api'
+  return ''
 }
 
 export function withFilesIntegrationBase(integrationBaseUrl: string, path: string): string {
@@ -33,7 +33,6 @@ export function withFilesIntegrationBase(integrationBaseUrl: string, path: strin
 }
 
 export const filesApi = {
-  /** Default: boi-api via `/api/boi-api` proxy. */
   upload: () => {
     const b = boiFilesApiBase()
     return b ? `${b}${FILES_API_UPLOAD_PATH}` : FILES_API_UPLOAD_PATH

@@ -37,7 +37,7 @@ const props = withDefaults(
     /**
      * Base URL for “View document” (no trailing slash). Use the same host as file uploads when they go
      * through boi-api or a proxy, e.g. `https://glow.test/api/boi-api` → `{base}/api/files/view?path=…`
-     * (presign runs on boi-api). If unset, uses `filesApi.view()` (default `/api/boi-api` proxy; see `boiFilesApiBase`).
+     * If unset, uses `filesApi.view()` (host app `/api/files/view` by default; see `boiFilesApiBase`).
      */
     viewApiBase?: string
     /**
