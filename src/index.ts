@@ -8,11 +8,15 @@ export { default as BankStatementIntegration } from './components/BankStatementI
 export { default as BankSelect } from './components/BankSelect.vue'
 export { default as FileInput } from './components/FileInput.vue'
 export { default as ApplicationFormStepper } from './components/ApplicationFormStepper.vue'
+export { default as LocationSelector } from './components/LocationSelector.vue'
 
 export { useEdocBanks } from './composables/useEdocBanks'
 export type { UseEdocBanksOptions } from './composables/useEdocBanks'
 export { useAccountVerification } from './composables/useAccountVerification'
 export type { VerifyBankAccountFn, VerificationState } from './composables/useAccountVerification'
+
+export { useLocation } from './composables/useLocation'
+export type { LocationState, LocationLga, LocationCity } from './composables/useLocation'
 
 export { edocApi } from './api/edoc'
 export type { EdocApi } from './api/edoc'
