@@ -129,7 +129,7 @@ const onTownChange = (e: Event) => {
   updateTown(target.value ? target.value : null)
 }
 
-// bootstrap: load states and, if pre-selected, load dependent tables
+// bootstrap: load states and, if pre-selected, load dependent tables (same as boi-online-portal LocationSelector)
 onMounted(async () => {
   await loadStates()
 
@@ -144,40 +144,30 @@ onMounted(async () => {
   }
 })
 
-// state -> lgas and reset lower fields
+// state -> LGAs only; when state cleared, drop town (portal: setupStateAndLgaWatcher + town watch). Never clear lga here so async-loaded forms keep lga_id.
 watch(
   () => formData.value?.[props.stateField],
   async (newState) => {
     if (newState) {
       await loadLgas(Number(newState))
-      formData.value = {
-        ...formData.value,
-        [props.lgaField]: null,
-        [props.townField]: null,
-      }
     } else {
       clearLgas()
       clearCities()
       formData.value = {
         ...formData.value,
-        [props.lgaField]: null,
         [props.townField]: null,
       }
     }
   },
 )
 
-// lga -> cities and reset lower field
+// lga -> cities; only clear town when lga cleared (portal parity — do not wipe town when lga loads)
 watch(
   () => formData.value?.[props.lgaField],
-  async (newLga) => {
-    if (newLga) {
+  async (newLgaId) => {
+    if (newLgaId) {
       if (props.showTownCity) {
-        await loadCities(Number(newLga))
-      }
-      formData.value = {
-        ...formData.value,
-        [props.townField]: null,
+        await loadCities(Number(newLgaId))
       }
     } else {
       if (props.showTownCity) clearCities()
