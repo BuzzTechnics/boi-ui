@@ -15,7 +15,7 @@ const props = withDefaults(
     isFormDisabled?: boolean
     blockAutoSave?: () => void
     unblockAutoSave?: () => void
-    /** Resolved base URL (proxy, server, or Vite). */
+    /** Same-origin host-app proxy base (e.g. `/api/boi-api`), never a direct boi-api origin. */
     boiApiBaseUrl: string
     api: {
       get: (url: string) => Promise<{ data?: unknown }>
@@ -37,7 +37,7 @@ const props = withDefaults(
   },
 )
 
-const hasBoiApiUrl = computed(() => Boolean(props.boiApiBaseUrl))
+const hasBoiProxyBase = computed(() => Boolean(props.boiApiBaseUrl))
 
 const bankOptions = computed<BankOption[]>(() => {
   const banks = props.banks || []
@@ -88,7 +88,7 @@ const verifyBankAccountAdapter = async (accountNumber: string, bankCode: string)
       Connect your bank account or upload a bank statement PDF for each account (max 5).
     </p>
     <BankStatementIntegration
-      v-if="applicationId && hasBoiApiUrl"
+      v-if="applicationId && hasBoiProxyBase"
       :application-id="String(applicationId)"
       :integration-base-url="boiApiBaseUrl"
       :api="api"
@@ -102,11 +102,11 @@ const verifyBankAccountAdapter = async (accountNumber: string, bankCode: string)
       :unblock-auto-save="unblockAutoSave"
       :poll-edoc-status="true"
     />
-    <p v-else-if="applicationId && !hasBoiApiUrl" class="text-amber-700 text-sm">
+    <p v-else-if="applicationId && !hasBoiProxyBase" class="text-amber-700 text-sm">
       Set <code class="text-xs bg-amber-50 px-1 rounded">BOI_API_URL</code> and matching
-      <code class="text-xs bg-amber-50 px-1 rounded">BOI_API_KEY</code> here and on boi-api (enables
-      <code class="text-xs bg-amber-50 px-1 rounded">/api/boi-api/…</code> proxy). Or
-      <code class="text-xs bg-amber-50 px-1 rounded">VITE_BOI_API_URL</code> + Sanctum for direct API.
+      <code class="text-xs bg-amber-50 px-1 rounded">BOI_API_KEY</code> on this app and boi-api so the
+      <code class="text-xs bg-amber-50 px-1 rounded">/api/boi-api/…</code> proxy is available (browser
+      calls stay on this origin; the server talks to boi-api).
     </p>
     <p v-else class="text-amber-700 text-sm">
       Save your application first to add bank statements.
