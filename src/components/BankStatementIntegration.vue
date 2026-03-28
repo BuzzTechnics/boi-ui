@@ -5,7 +5,6 @@ import { useEdocBanks } from '../composables/useEdocBanks'
 import { useAccountVerification } from '../composables/useAccountVerification'
 import { bankStatementsApi } from '../api/bankStatements'
 import { edocApi } from '../api/edoc'
-import { FILES_API_UPLOAD_PATH } from '../api/files'
 import Button from './Button.vue'
 import BankSelect from './BankSelect.vue'
 import EmtsIntegration from './EmtsIntegration.vue'
@@ -106,13 +105,15 @@ const urls = computed(() =>
   props.applicationId ? bankStatementsApi.urls(props.applicationId, statementsUrlPrefix.value) : null
 )
 
-/** Same-origin app route; the app backend forwards to boi-api when configured. */
-const fileUploadUrl = computed(() =>
-  props.integrationBaseUrl ? FILES_API_UPLOAD_PATH : undefined
-)
+/** Same base as host `FileInput` + `boiFilesApiBase`: `{integrationBaseUrl}/api/files/*` (browser proxy to boi-api). */
+const filesApiBase = computed(() => (props.integrationBaseUrl ?? '').replace(/\/$/, ''))
 
-/** Same-origin `/api/files/view` so the app can delegate presign to boi-api. */
-const fileViewApiBase = computed(() => '')
+const fileUploadUrl = computed(() => {
+  const b = filesApiBase.value
+  return b ? `${b}/api/files/upload` : undefined
+})
+
+const fileViewApiBase = computed(() => filesApiBase.value)
 
 const limitedStatements = computed(() =>
   bankStatements.value.slice(0, props.maxAccounts)
@@ -151,11 +152,6 @@ function statementViewStoragePath(account: BankStatementRecord): string {
   const b = account.bank_statement?.trim() ?? ''
   if (b && !isEdocCsvStorageKey(b)) return b
   return ''
-}
-
-function onStatementFileUploaded(statement: BankStatementRecord, path: string) {
-  statement.uploaded_statement_path = path.trim()
-  saveStatement(statement)
 }
 
 function getStatementLabel(account: BankStatementRecord, index: number): string {
@@ -204,7 +200,7 @@ async function syncStatementsFromPoll() {
     const res = await props.api.get(urls.value.index)
     const data = res?.data as { success?: boolean; data?: BankStatementRecord[] }
     if (!data?.success || !Array.isArray(data.data)) return
-    const fields = ['edoc_status', 'consent_id', 'csv_url', 'statement_generated'] as const
+    const fields = ['edoc_status', 'consent_id', 'csv_url', 'statement_generated', 'files_bucket'] as const
     bankStatements.value = bankStatements.value.map((existing) => {
       const apiRow = data.data!.find((s) => s.id === existing.id)
       if (!apiRow) return existing
@@ -274,6 +270,7 @@ async function saveStatement(statement: BankStatementRecord) {
       bvn: statement.bvn,
       email: statement.email,
       bank_statement: statement.bank_statement,
+      files_bucket: statement.files_bucket ?? null,
     })
   } catch (e) {
     console.error('Failed to save bank statement', e)
@@ -300,6 +297,7 @@ async function handleAddAccount() {
     otp: '',
     showOtpInput: false,
     uploaded_statement_path: '',
+    files_bucket: null,
   }
   bankStatements.value.push(newRecord)
   activeIndex.value = bankStatements.value.length - 1
@@ -368,8 +366,13 @@ function clearError() {
 }
 
 function createAfterUpload(statement: BankStatementRecord) {
-  return (filePath: string) => {
+  return async (filePath: string, meta?: { bucket?: string }) => {
     if (!urls.value) return
+    statement.uploaded_statement_path = filePath.trim()
+    if (meta?.bucket) {
+      statement.files_bucket = meta.bucket
+    }
+    await saveStatement(statement)
     props.blockAutoSave?.()
     statement.edoc_status = 'processing'
     const sector = getIndustrialSectorName()
@@ -611,7 +614,6 @@ onUnmounted(() => {
                 upload-context="bank_statement"
                 :after-upload="createAfterUpload(account)"
                 :disabled="isFormDisabled"
-                @uploaded="(path) => onStatementFileUploaded(account, String(path))"
               />
                <!-- Status -->
           <div class="rounded-lg py-3">

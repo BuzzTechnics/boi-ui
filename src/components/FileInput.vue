@@ -31,7 +31,7 @@ const props = withDefaults(
     uploadContext?: string
     /** S3 folder segment for boi-api `FileController` (default `documents`). */
     uploadFolder?: string
-    afterUpload?: (path: string) => void
+    afterUpload?: (path: string, meta?: { bucket?: string }) => void | Promise<void>
     /** Upload URL (default: filesApi.upload()) */
     uploadUrl?: string
     /**
@@ -76,7 +76,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   'validation-error': [message: string]
   'validation-success': [message: string]
-  'uploaded': [path: string]
+  'uploaded': [path: string, meta?: { bucket?: string }]
 }>()
 
 const fileInput = ref<HTMLInputElement>()
@@ -175,16 +175,24 @@ async function handleChange(e: Event) {
     try {
       // Do not set Content-Type — axios must set multipart boundary. Same pattern as BankStatementIntegration.
       const res = await props.post(url, formData)
-      const data = res?.data as { success?: boolean; path?: string; url?: string; message?: string } | undefined
+      const data = res?.data as {
+        success?: boolean
+        path?: string
+        url?: string
+        message?: string
+        bucket?: string
+      } | undefined
       if (data?.success && data?.path) {
         fileName.value = file.name
         if (data.url) {
           console.log('[FileInput] S3 URL:', data.url)
         }
+        const meta =
+          typeof data.bucket === 'string' && data.bucket !== '' ? { bucket: data.bucket } : undefined
         emit('update:modelValue', data.path)
         emit('validation-success', 'File uploaded successfully')
-        emit('uploaded', data.path)
-        props.afterUpload?.(data.path)
+        emit('uploaded', data.path, meta)
+        await Promise.resolve(props.afterUpload?.(data.path, meta))
       } else {
         const msg = data?.message ?? 'Upload failed'
         errorMessage.value = msg
@@ -249,6 +257,7 @@ watch(() => props.modelValue, (v) => {
       target="_blank"
       rel="noopener noreferrer"
       class="text-sm text-blue-600 hover:underline"
+      @click.stop
     >
       View document >>>
     </a>

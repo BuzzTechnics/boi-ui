@@ -19,6 +19,8 @@ export interface BankStatementRecord {
   bvn?: string
   email: string
   bank_statement?: string
+  /** S3 bucket name returned from file upload (boi-api dynamic bucket). */
+  files_bucket?: string | null
   /**
    * Client-only: S3 key for the uploaded PDF used for “View document”.
    * Kept when API/poll sets `bank_statement` to the EDOC CSV object key.
