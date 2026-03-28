@@ -106,12 +106,13 @@ const urls = computed(() =>
   props.applicationId ? bankStatementsApi.urls(props.applicationId, statementsUrlPrefix.value) : null
 )
 
+/** Same-origin app route; the app backend forwards to boi-api when configured. */
 const fileUploadUrl = computed(() =>
-  props.integrationBaseUrl ? withIntegrationOrigin(FILES_API_UPLOAD_PATH) : undefined
+  props.integrationBaseUrl ? FILES_API_UPLOAD_PATH : undefined
 )
 
-/** Same base as uploads (boi-api or `/api/boi-api` proxy) so `/api/files/view` presigns there. */
-const fileViewApiBase = computed(() => (props.integrationBaseUrl ?? '').trim().replace(/\/$/, ''))
+/** Same-origin `/api/files/view` so the app can delegate presign to boi-api. */
+const fileViewApiBase = computed(() => '')
 
 const limitedStatements = computed(() =>
   bankStatements.value.slice(0, props.maxAccounts)
