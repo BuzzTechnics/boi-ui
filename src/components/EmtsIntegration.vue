@@ -80,7 +80,7 @@ const canRetrieveStatement = computed(() => {
   const digits = getSanitizedAccountNumber(props.account.account_number)
   return !!props.account.bank && digits.length === 10 && !submittingOtp.value
 })
-const canSubmitOtp = computed(() => !!props.account.otp && !submittingOtp.value)
+const canSubmitOtp = computed(() => !!String(props.account.otp ?? '').trim() && !submittingOtp.value)
 
 const errMsg = (e: unknown) =>
   (e as { response?: { data?: { message?: string } }; data?: { message?: string }; message?: string })?.response?.data?.message ??
@@ -143,12 +143,19 @@ async function generateStatement() {
 }
 
 async function submitOtp() {
-  if (!props.account.otp || !props.account.consent_id) return emit('error', 'Please enter OTP')
+  const otp = String(props.account.otp ?? '').trim()
+  const consentId = String(props.account.consent_id ?? '').trim()
+  if (!consentId) {
+    return emit('error', 'Consent session missing — click Send OTP again, then verify.')
+  }
+  if (!otp) {
+    return emit('error', 'Please enter OTP')
+  }
   submittingOtp.value = true
   try {
     const res = await props.api.post(edocPath(edocApi.getTransactions()), {
-      consentId: props.account.consent_id,
-      verificationCode: props.account.otp,
+      consentId,
+      verificationCode: otp,
       bankStatementId: props.account.id,
     })
     const data = res?.data as { success?: boolean; data?: { statement?: BankStatementRecord }; message?: string }

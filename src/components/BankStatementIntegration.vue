@@ -200,13 +200,19 @@ async function syncStatementsFromPoll() {
     const res = await props.api.get(urls.value.index)
     const data = res?.data as { success?: boolean; data?: BankStatementRecord[] }
     if (!data?.success || !Array.isArray(data.data)) return
-    const fields = ['edoc_status', 'consent_id', 'csv_url', 'statement_generated', 'files_bucket'] as const
+    const fields = ['edoc_status', 'consent_id', 'csv_url', 'statement_generated'] as const
     bankStatements.value = bankStatements.value.map((existing) => {
       const apiRow = data.data!.find((s) => s.id === existing.id)
       if (!apiRow) return existing
       const updates: Partial<BankStatementRecord> = {}
       for (const key of fields) {
-        if (key in apiRow) (updates as Record<string, unknown>)[key] = apiRow[key]
+        if (!(key in apiRow)) continue
+        const v = apiRow[key]
+        // Avoid wiping in-memory EDOC consent before the server has persisted it (e.g. mid–OTP flow).
+        if (key === 'consent_id' && (v === null || v === '') && existing.consent_id) {
+          continue
+        }
+        ;(updates as Partial<Record<(typeof fields)[number], unknown>>)[key] = v
       }
       let uploadedPath = existing.uploaded_statement_path ?? ''
       if ('bank_statement' in apiRow && apiRow.bank_statement !== undefined) {
@@ -270,7 +276,7 @@ async function saveStatement(statement: BankStatementRecord) {
       bvn: statement.bvn,
       email: statement.email,
       bank_statement: statement.bank_statement,
-      files_bucket: statement.files_bucket ?? null,
+      consent_id: statement.consent_id?.trim() || null,
     })
   } catch (e) {
     console.error('Failed to save bank statement', e)
@@ -297,7 +303,6 @@ async function handleAddAccount() {
     otp: '',
     showOtpInput: false,
     uploaded_statement_path: '',
-    files_bucket: null,
   }
   bankStatements.value.push(newRecord)
   activeIndex.value = bankStatements.value.length - 1
@@ -366,12 +371,9 @@ function clearError() {
 }
 
 function createAfterUpload(statement: BankStatementRecord) {
-  return async (filePath: string, meta?: { bucket?: string }) => {
+  return async (filePath: string) => {
     if (!urls.value) return
     statement.uploaded_statement_path = filePath.trim()
-    if (meta?.bucket) {
-      statement.files_bucket = meta.bucket
-    }
     await saveStatement(statement)
     props.blockAutoSave?.()
     statement.edoc_status = 'processing'
