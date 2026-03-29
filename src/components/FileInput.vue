@@ -45,6 +45,8 @@ const props = withDefaults(
      * but the user should open the uploaded PDF).
      */
     viewStoragePath?: string
+    /** Extra query params for GET /api/files/view (e.g. `{ bucket: 'my-bucket' }` when the key is not on the app default bucket). */
+    viewExtraParams?: Record<string, string | number | boolean>
     /** POST function, e.g. (url, formData, opts) => axios.post(url, formData, opts). Returns Promise<{ data?: { success?, path?, message? } }>. */
     post?: (url: string, body: FormData, options?: { headers?: Record<string, string> }) => Promise<{ data?: unknown }>
   }>(),
@@ -122,10 +124,20 @@ const effectiveViewStoragePath = computed(() => {
 const viewFileUrl = computed(() => {
   const raw = effectiveViewStoragePath.value
   if (!raw || !props.uploadToServer) return '#'
-  const path = encodeURIComponent(raw)
+  const extra = props.viewExtraParams
   const base = viewApiBaseNorm.value
-  if (base) return `${base}/api/files/view?path=${path}`
-  return filesApi.view(raw)
+  if (base) {
+    const params = new URLSearchParams()
+    params.set('path', raw)
+    if (extra && typeof extra === 'object') {
+      for (const [k, v] of Object.entries(extra)) {
+        if (v === undefined || v === null || v === '') continue
+        params.set(k, String(v))
+      }
+    }
+    return `${base}/api/files/view?${params.toString()}`
+  }
+  return filesApi.view(raw, extra)
 })
 
 function validate(file: File): boolean {

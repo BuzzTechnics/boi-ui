@@ -9,6 +9,7 @@ import Button from './Button.vue'
 import BankSelect from './BankSelect.vue'
 import EmtsIntegration from './EmtsIntegration.vue'
 import FileInput from './FileInput.vue'
+import EdocProcessingSpinner from './EdocProcessingSpinner.vue'
 import type { VerifyBankAccountFn } from '../composables/useAccountVerification'
 import { edocRowMatchesLocalBank } from '../utils/bankCodesEquivalent'
 
@@ -38,6 +39,8 @@ const props = withDefaults(
     unblockAutoSave?: () => void
     /** When false, do not poll for EDOC status (stops repeated GET list calls). Set false when upload-to-edoc is disabled. */
     pollEdocStatus?: boolean
+    /** Extra query params for manual bank_statement PDF “View document” (e.g. `{ bucket: '…' }` matching boi-api default bucket). */
+    fileViewExtraParams?: Record<string, string>
   }>(),
   {
     baseUrl: '',
@@ -46,6 +49,7 @@ const props = withDefaults(
     maxAccounts: 5,
     verifyBankAccount: null,
     pollEdocStatus: true,
+    fileViewExtraParams: () => ({}),
   }
 )
 
@@ -490,7 +494,7 @@ onUnmounted(() => {
 
       <!-- Loading state -->
       <div v-if="loadingStatements" class="flex items-center justify-center py-10">
-        <span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 mr-2" aria-hidden="true" />
+        <EdocProcessingSpinner :size="20" class="mr-2 text-slate-600" />
         <span class="text-sm text-slate-600">Loading bank statements…</span>
       </div>
 
@@ -610,6 +614,7 @@ onUnmounted(() => {
               <FileInput
                 v-model="account.bank_statement"
                 :view-storage-path="statementViewStoragePath(account)"
+                :view-extra-params="fileViewExtraParams"
                 :post="(url, body, opts) => api.post(url, body, opts)"
                 :upload-url="fileUploadUrl"
                 :view-api-base="fileViewApiBase || undefined"
@@ -628,11 +633,7 @@ onUnmounted(() => {
               <span
                 :class="[getStatusClass(account.edoc_status || 'pending'), 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium capitalize']"
               >
-                <span
-                  v-if="account.edoc_status === 'processing'"
-                  class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden="true"
-                />
+                <EdocProcessingSpinner v-if="account.edoc_status === 'processing'" :size="14" />
                 {{ account.edoc_status || 'pending' }}
               </span>
             </div>

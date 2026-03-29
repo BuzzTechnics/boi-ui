@@ -8,6 +8,7 @@ export { default as BankStatementIntegration } from './components/BankStatementI
 export { default as BankStatementsPanel } from './components/BankStatementsPanel.vue'
 export { default as BankSelect } from './components/BankSelect.vue'
 export { default as FileInput } from './components/FileInput.vue'
+export { default as EdocProcessingSpinner } from './components/EdocProcessingSpinner.vue'
 export { default as ApplicationFormStepper } from './components/ApplicationFormStepper.vue'
 export { default as LocationSelector } from './components/LocationSelector.vue'
 

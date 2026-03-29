@@ -37,9 +37,17 @@ export const filesApi = {
     const b = boiFilesApiBase()
     return b ? `${b}${FILES_API_UPLOAD_PATH}` : FILES_API_UPLOAD_PATH
   },
-  view: (path: string) => {
+  view: (path: string, extraParams?: Record<string, string | number | boolean>) => {
     const b = boiFilesApiBase()
-    const q = `?path=${encodeURIComponent(path)}`
+    const params = new URLSearchParams()
+    params.set('path', path)
+    if (extraParams && typeof extraParams === 'object') {
+      for (const [k, v] of Object.entries(extraParams)) {
+        if (v === undefined || v === null || v === '') continue
+        params.set(k, String(v))
+      }
+    }
+    const q = `?${params.toString()}`
     return b ? `${b}${VIEW_SUFFIX}${q}` : `${VIEW_SUFFIX}${q}`
   },
 } as const

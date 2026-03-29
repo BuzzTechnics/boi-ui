@@ -27,6 +27,8 @@ const props = withDefaults(
       accountNumber: string,
       bankCode: string,
     ) => Promise<{ account_name?: string; accountName?: string } | null>
+    /** Forwarded to manual bank_statement FileInput view link (e.g. `{ bucket: '…' }`). */
+    fileViewExtraParams?: Record<string, string>
   }>(),
   {
     applicationId: null,
@@ -34,6 +36,7 @@ const props = withDefaults(
     industrialSectorId: '',
     sectorOptions: () => [],
     isFormDisabled: false,
+    fileViewExtraParams: () => ({}),
   },
 )
 
@@ -101,6 +104,7 @@ const verifyBankAccountAdapter = async (accountNumber: string, bankCode: string)
       :block-auto-save="blockAutoSave"
       :unblock-auto-save="unblockAutoSave"
       :poll-edoc-status="true"
+      :file-view-extra-params="fileViewExtraParams"
     />
     <p v-else-if="applicationId && !hasBoiProxyBase" class="text-amber-700 text-sm">
       Set <code class="text-xs bg-amber-50 px-1 rounded">BOI_API_URL</code> and matching
