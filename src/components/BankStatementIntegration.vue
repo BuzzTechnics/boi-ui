@@ -641,7 +641,7 @@ onUnmounted(() => {
               Processing in progress. Please wait…
             </p>
             <p v-if="account.edoc_status === 'failed'" class="mt-1.5 text-sm text-red-600">
-              Processing failed. Please re-upload a valid bank statement or try another method.
+              Processing failed. Please make sure you have filled in your bank details above, plus added a valid statement, and try again.
             </p>
           </div>
             </slot>
