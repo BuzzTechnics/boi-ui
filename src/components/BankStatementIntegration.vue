@@ -39,7 +39,7 @@ const props = withDefaults(
     unblockAutoSave?: () => void
     /** When false, do not poll for EDOC status (stops repeated GET list calls). Set false when upload-to-edoc is disabled. */
     pollEdocStatus?: boolean
-    /** Extra query params for manual bank_statement PDF “View document” (e.g. `{ bucket: '…' }` matching boi-api default bucket). */
+    /** Extra query params for manual bank_statement PDF “View document” (e.g. `{ tid: '…' }` for boi-api store scope). */
     fileViewExtraParams?: Record<string, string>
   }>(),
   {

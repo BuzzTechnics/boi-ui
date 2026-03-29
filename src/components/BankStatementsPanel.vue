@@ -27,7 +27,7 @@ const props = withDefaults(
       accountNumber: string,
       bankCode: string,
     ) => Promise<{ account_name?: string; accountName?: string } | null>
-    /** Forwarded to manual bank_statement FileInput view link (e.g. `{ bucket: '…' }`). */
+    /** Forwarded to manual bank_statement FileInput view link (e.g. `{ tid: '…' }`). */
     fileViewExtraParams?: Record<string, string>
   }>(),
   {

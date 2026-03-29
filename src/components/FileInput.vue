@@ -45,7 +45,7 @@ const props = withDefaults(
      * but the user should open the uploaded PDF).
      */
     viewStoragePath?: string
-    /** Extra query params for GET /api/files/view (e.g. `{ bucket: 'my-bucket' }` when the key is not on the app default bucket). */
+    /** Extra query params for GET /api/files/view (e.g. `{ tid: '…' }` for alternate storage scope). */
     viewExtraParams?: Record<string, string | number | boolean>
     /** POST function, e.g. (url, formData, opts) => axios.post(url, formData, opts). Returns Promise<{ data?: { success?, path?, message? } }>. */
     post?: (url: string, body: FormData, options?: { headers?: Record<string, string> }) => Promise<{ data?: unknown }>
