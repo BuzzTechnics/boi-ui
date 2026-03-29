@@ -82,6 +82,9 @@ const canRetrieveStatement = computed(() => {
 })
 const canSubmitOtp = computed(() => !!String(props.account.otp ?? '').trim() && !submittingOtp.value)
 
+/** Server queued CSV transfer / EDOC pipeline — hide OTP and show same affordance as manual upload processing. */
+const isEdocProcessing = computed(() => props.account.edoc_status === 'processing')
+
 const errMsg = (e: unknown) =>
   (e as { response?: { data?: { message?: string } }; data?: { message?: string }; message?: string })?.response?.data?.message ??
   (e as { data?: { message?: string } })?.data?.message ??
@@ -208,6 +211,28 @@ async function retrieveStatementDirect() {
           <h5 class="min-w-0 break-words text-sm font-bold text-primary">Statement Generated Successfully and sent to Bank of Industry!</h5>
         </div>
         <p class="break-words text-xs text-primary">Your bank statement has been automatically retrieved and saved.</p>
+      </div>
+
+      <!-- Background job: EDOC CSV → our S3 (same visual language as manual PDF processing) -->
+      <div
+        v-else-if="isEdocProcessing"
+        class="rounded-lg border border-amber-200 bg-amber-50/90 p-4"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-sm font-medium text-amber-900">Electronic statement status:</span>
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium capitalize text-amber-900"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden="true"
+            />
+            {{ account.edoc_status || 'processing' }}
+          </span>
+        </div>
+        <p class="mt-2 text-sm text-amber-800">
+          Processing in progress. Please wait while we retrieve and save your statement…
+        </p>
       </div>
 
       <template v-else>
@@ -361,7 +386,8 @@ async function retrieveStatementDirect() {
         </template>
       </template>
     </div>
-    <div v-if="account.edoc_status === 'failed'" class="text-sm text-red-600">Statement retrieval failed. Please try again or upload manually.</div>
-    <div v-if="account.edoc_status === 'processing'" class="text-sm text-amber-600">Processing…</div>
+    <div v-if="account.edoc_status === 'failed'" class="text-sm text-red-600">
+      Statement retrieval failed. Please try again or upload manually.
+    </div>
   </div>
 </template>

@@ -503,7 +503,11 @@ onUnmounted(() => {
             type="button"
             :title="getStatementLabel(account, index)"
             class="snap-start max-w-[85vw] shrink-0 truncate whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:max-w-none"
-            :class="activeIndex === index ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+            :class="
+              activeIndex === index
+                ? 'border-2 border-primary bg-primary text-white shadow-sm'
+                : 'border-2 border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+            "
             @click="activeIndex = index"
           >
             {{ getStatementLabel(account, index) }}
