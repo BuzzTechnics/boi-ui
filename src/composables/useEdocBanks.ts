@@ -27,14 +27,18 @@ function resolveUrl(u: string | (() => string) | undefined, fallback: string): s
 
 export function useEdocBanks(options: UseEdocBanksOptions) {
   const { get, getBanksUrl, fallbackBanksUrl } = options
-  const edocBanksCache = ref<EdocBank[]>([])
-  const banksCache = ref<EdocBank[]>([])
+  // Reactive refs expose the latest fetched list to consumers but the list is NOT cached
+  // across calls — each invocation of loadBanksForStatement() hits EDOC live so bank
+  // additions/removals on EDOC's side are visible immediately.
+  const edocBanks = ref<EdocBank[]>([])
+  const banks = ref<EdocBank[]>([])
   const loadingBanks = ref(false)
   const errorBanks = ref<string | null>(null)
+  // Only in-flight dedupe (so a single render with multiple BankSelect components
+  // doesn't fan out N parallel requests). Cleared as soon as the fetch resolves.
   let banksPromise: Promise<EdocBank[]> | null = null
 
   const loadBanksForStatement = async (): Promise<EdocBank[]> => {
-    if (edocBanksCache.value.length > 0) return edocBanksCache.value
     if (banksPromise) return banksPromise
 
     loadingBanks.value = true
@@ -44,7 +48,7 @@ export function useEdocBanks(options: UseEdocBanksOptions) {
         const res = await get(resolveUrl(getBanksUrl, edocApi.getBanks()))
         const list = toBanksList(res?.data)
         if (list.length) {
-          edocBanksCache.value = banksCache.value = list
+          edocBanks.value = banks.value = list
           return list
         }
       } catch {}
@@ -54,13 +58,14 @@ export function useEdocBanks(options: UseEdocBanksOptions) {
         try {
           const fallback = await get(fallbackUrl)
           const list = Array.isArray(fallback?.data) ? (fallback.data as EdocBank[]) : []
-          edocBanksCache.value = banksCache.value = list
+          edocBanks.value = banks.value = list
           return list
         } catch (err: unknown) {
           errorBanks.value = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to load banks'
           throw err
         }
       }
+      edocBanks.value = banks.value = []
       return []
     })().finally(() => {
       loadingBanks.value = false
@@ -70,13 +75,13 @@ export function useEdocBanks(options: UseEdocBanksOptions) {
   }
 
   return {
-    edocBanks: edocBanksCache,
-    banks: banksCache,
+    edocBanks,
+    banks,
     loading: loadingBanks,
     error: errorBanks,
     loadBanksForStatement,
     invalidateCache: () => {
-      edocBanksCache.value = banksCache.value = []
+      edocBanks.value = banks.value = []
       banksPromise = null
       errorBanks.value = null
     },
