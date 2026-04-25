@@ -8,7 +8,7 @@ import BankStatementIntegration from './BankStatementIntegration.vue'
 const props = withDefaults(
   defineProps<{
     applicationId?: number | string | null
-    banks: Array<{ id?: number | string; name?: string; code?: string; short_name?: string }>
+    banks: Array<{ id?: number | string; name?: string; code?: string; short_name?: string; edoc_bank_id?: number | null }>
     email?: string
     industrialSectorId?: string | number
     sectorOptions?: IndustrialSectorOption[]
@@ -52,6 +52,7 @@ const bankOptions = computed<BankOption[]>(() => {
       label: b.name || '',
       shortName: b.short_name || undefined,
       searchKeywords: b.short_name ? [b.short_name] : [],
+      edocBankId: b.edoc_bank_id ?? null,
     }
   })
 })

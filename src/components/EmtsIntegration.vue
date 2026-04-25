@@ -60,9 +60,16 @@ function matchBank(bankCode: string, enabledOnly = false): EdocBank | undefined 
     null
   const localCode = localBank?.value ?? bankCode
   const names = bankNames(bankCode)
+  const edocBankId = localBank?.edocBankId ?? null
 
   const matched = props.edocBanks.find((b) =>
-    edocRowMatchesLocalBank(String(localCode), b as unknown as Record<string, unknown>, names, enabledOnly)
+    edocRowMatchesLocalBank(
+      String(localCode),
+      b as unknown as Record<string, unknown>,
+      names,
+      enabledOnly,
+      edocBankId
+    )
   )
 
   return matched

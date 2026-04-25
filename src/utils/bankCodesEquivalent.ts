@@ -33,9 +33,18 @@ export function edocRowMatchesLocalBank(
   localBankCode: string,
   row: Record<string, unknown>,
   localBankNames: string[],
-  enabledOnly: boolean
+  enabledOnly: boolean,
+  localEdocBankId?: number | null
 ): boolean {
   if (enabledOnly && row.enabled === false) return false
+
+  // Prefer the explicit edoc bank id pairing when both sides know it — this
+  // resolves sub-brands (e.g. ALAT by WEMA, code 035A) to their EDOC parent
+  // (Wema, code 035) without relying on code/name heuristics.
+  if (localEdocBankId != null && typeof row.bankId === 'number' && row.bankId === localEdocBankId) {
+    return true
+  }
+
   if (!localBankCode) return false
 
   const codes = edocRowCodeCandidates(row)

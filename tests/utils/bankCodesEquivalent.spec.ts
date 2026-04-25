@@ -22,4 +22,18 @@ describe('edocRowMatchesLocalBank', () => {
     const row = { bankId: 1, name: 'Test', bankCode: '057', enabled: false }
     expect(edocRowMatchesLocalBank('057', row, [], true)).toBe(false)
   })
+
+  it('matches a sub-brand to its EDOC parent via edocBankId', () => {
+    // EDOC master returns Wema (bankId: 1, code: 035). Local bank is
+    // "ALAT by WEMA" (code 035A) — code/name comparison would not match,
+    // but both share edoc_bank_id=1 in the local DB.
+    const row = { bankId: 1, name: 'Wema Bank', bankCode: '035', enabled: true }
+    expect(edocRowMatchesLocalBank('035A', row, ['ALAT by WEMA'], true, 1)).toBe(true)
+  })
+
+  it('does not cross-match unrelated banks even with same code shape when edocBankId differs', () => {
+    const row = { bankId: 2, name: 'Providus', bankCode: '101', enabled: true }
+    // Local edocBankId=1 (e.g. Wema) must not match a row with bankId=2.
+    expect(edocRowMatchesLocalBank('035A', row, ['ALAT by WEMA'], true, 1)).toBe(false)
+  })
 })

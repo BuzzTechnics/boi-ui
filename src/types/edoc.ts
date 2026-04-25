@@ -69,6 +69,12 @@ export interface BankOption {
   /** Shown in search (e.g. FCMB); also include in searchKeywords if you only pass one */
   shortName?: string
   searchKeywords?: string[]
+  /**
+   * EDOC provider's internal bank id. When set, the EDOC matcher prefers this
+   * over code/name comparison so sub-brands (e.g. "ALAT by WEMA" → Wema)
+   * resolve to the same EDOC entry as their parent.
+   */
+  edocBankId?: number | null
 }
 
 export interface IndustrialSectorOption {

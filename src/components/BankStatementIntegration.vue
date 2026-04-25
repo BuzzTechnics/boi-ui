@@ -419,8 +419,15 @@ const isBankEdocSupported = (bankCode: string): boolean => {
 
   const localCode = bank?.value ?? bankCode
   const names = [bank?.label ?? '', ...(bank?.searchKeywords ?? [])].filter(Boolean)
+  const edocBankId = bank?.edocBankId ?? null
   const matched = edocBanks.value.some((b) =>
-    edocRowMatchesLocalBank(String(localCode), b as unknown as Record<string, unknown>, names, true)
+    edocRowMatchesLocalBank(
+      String(localCode),
+      b as unknown as Record<string, unknown>,
+      names,
+      true,
+      edocBankId
+    )
   )
 
   return matched
