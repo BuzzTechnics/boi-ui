@@ -47,7 +47,9 @@ export const filesApi = {
         params.set(k, String(v))
       }
     }
-    const q = `?${params.toString()}`
+    // Use %20 for spaces (encodeURIComponent semantics) instead of URLSearchParams' '+' —
+    // %20 decodes correctly across all consumers, '+' can be ambiguous outside form bodies.
+    const q = `?${params.toString().replace(/\+/g, '%20')}`
     return b ? `${b}${VIEW_SUFFIX}${q}` : `${VIEW_SUFFIX}${q}`
   },
 } as const

@@ -21,7 +21,9 @@ describe('useEdocBanks', () => {
     expect(get).toHaveBeenCalledWith('/api/edoc/banks')
   })
 
-  it('caches banks from success response', async () => {
+  it('re-fetches on each call (no cross-call caching) but exposes the latest list', async () => {
+    // The composable intentionally does NOT cache across calls so EDOC bank
+    // additions/removals are visible immediately. See commit 431c569.
     const get = vi.fn().mockResolvedValue({ data: { success: true, data: mockBanks } })
     const { loadBanksForStatement, edocBanks } = useEdocBanks({ get })
 
@@ -30,7 +32,7 @@ describe('useEdocBanks', () => {
     expect(edocBanks.value[0].name).toBe('Access Bank')
 
     await loadBanksForStatement()
-    expect(get).toHaveBeenCalledTimes(1)
+    expect(get).toHaveBeenCalledTimes(2)
   })
 
   it('normalizes array at data root', async () => {
