@@ -36,6 +36,10 @@ const emit = defineEmits<{
 
 const generatingStatement = ref(false)
 const submittingOtp = ref(false)
+// True between attach and the user confirming they authorized in their bank
+// app, when the bank requires bank-side authorization (hasBankInstructions).
+const requestingStatement = ref(false)
+const fetchingTransactions = ref(false)
 
 function getSanitizedAccountNumber(accountNumber: string | undefined): string {
   // EDOC + backend validation expects exactly 10 digits. Users may type spaces or other chars.
@@ -86,8 +90,17 @@ const canRequestOtp = computed(() => {
 
 const canRetrieveStatement = computed(() => {
   const digits = getSanitizedAccountNumber(props.account.account_number)
-  return !!props.account.bank && digits.length === 10 && !submittingOtp.value
+  return !!props.account.bank
+    && digits.length === 10
+    && !requestingStatement.value
+    && !fetchingTransactions.value
 })
+
+// True once the bank-side request has been registered (consent_id set) and we
+// are now waiting for the user to authorize on the bank app side.
+const isAwaitingBankAuthorization = computed(
+  () => hasBankInstructions.value && !!String(props.account.consent_id ?? '').trim()
+)
 const canSubmitOtp = computed(() => !!String(props.account.otp ?? '').trim() && !submittingOtp.value)
 
 /** Server queued CSV transfer / EDOC pipeline — hide OTP and show same affordance as manual upload processing. */
@@ -180,16 +193,42 @@ async function submitOtp() {
   }
 }
 
-async function retrieveStatementDirect() {
+/**
+ * Step 1 for banks with instructions: run init + attach only, persist the
+ * consentId, and stop. The user must now authorize the request in their own
+ * bank app before we can fetch transactions; calling getTransactions here
+ * (the previous behaviour) consistently failed because the bank had not yet
+ * approved the request on its side.
+ */
+async function requestStatementWithInstructions() {
   const edocBank = getEdocBank(props.account.bank)
   const digits = getSanitizedAccountNumber(props.account.account_number)
   if (!props.account.bank || digits.length !== 10) {
     return emit('error', 'Please select a bank and provide a valid 10-digit account number')
   }
   if (!edocBank) return emit('error', 'Selected bank does not support electronic statement retrieval')
-  submittingOtp.value = true
+  requestingStatement.value = true
   try {
-    const consentId = await consentAndAttach(edocBank, digits)
+    await consentAndAttach(edocBank, digits)
+  } catch (err) {
+    emit('error', errMsg(err))
+  } finally {
+    requestingStatement.value = false
+  }
+}
+
+/**
+ * Step 2 for banks with instructions: the user has confirmed they authorized
+ * the request in their bank app, so call getTransactions with the consentId
+ * we already obtained in step 1.
+ */
+async function fetchTransactionsAfterAuthorization() {
+  const consentId = String(props.account.consent_id ?? '').trim()
+  if (!consentId) {
+    return emit('error', 'Authorization session missing — click Retrieve Statement again to start over.')
+  }
+  fetchingTransactions.value = true
+  try {
     const res = await props.api.post(edocPath(edocApi.getTransactions()), {
       consentId,
       verificationCode: '',
@@ -201,7 +240,7 @@ async function retrieveStatementDirect() {
   } catch (err) {
     emit('error', errMsg(err))
   } finally {
-    submittingOtp.value = false
+    fetchingTransactions.value = false
   }
 }
 </script>
@@ -280,24 +319,41 @@ async function retrieveStatementDirect() {
             </div>
           </div>
 
-          <div class="rounded-lg border-2 border-primary bg-white p-4">
+          <!-- Step 1: register the request with the bank (init + attach) -->
+          <div v-if="!isAwaitingBankAuthorization" class="rounded-lg border-2 border-primary bg-white p-4">
             <div class="mb-3 flex items-center gap-2">
-              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 6L9 17l-5-5"></path>
-                </svg>
-              </div>
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">1</div>
               <h5 class="text-sm font-bold text-gray-900">Retrieve Statement</h5>
             </div>
-            <p class="mb-3 break-words !text-base text-gray-600">After completing the instructions above, click the button below to retrieve your bank statement.</p>
+            <p class="mb-3 break-words !text-base text-gray-600">After completing the instructions above, click the button below to register the request with your bank.</p>
             <button
               type="button"
               class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium sm:w-auto"
               :disabled="!canRetrieveStatement || disabled"
-              @click="retrieveStatementDirect"
+              @click="requestStatementWithInstructions"
             >
-              <EdocProcessingSpinner v-if="submittingOtp" :size="14" class="text-white" />
-              {{ submittingOtp ? 'Retrieving Statement…' : 'Retrieve Statement' }}
+              <EdocProcessingSpinner v-if="requestingStatement" :size="14" class="text-white" />
+              {{ requestingStatement ? 'Registering Request…' : 'Retrieve Statement' }}
+            </button>
+          </div>
+
+          <!-- Step 2: user authorizes in their bank app, then clicks confirm -->
+          <div v-else class="rounded-lg border-2 border-primary bg-primary/5 p-4">
+            <div class="mb-3 flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">2</div>
+              <h5 class="text-sm font-bold text-gray-900">Authorize in Your Bank App</h5>
+            </div>
+            <p class="mb-3 break-words !text-base text-gray-700">
+              Open your bank app and approve the statement request, then click the button below. Fetching transactions before authorising will fail.
+            </p>
+            <button
+              type="button"
+              class="bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium sm:w-auto"
+              :disabled="fetchingTransactions || disabled"
+              @click="fetchTransactionsAfterAuthorization"
+            >
+              <EdocProcessingSpinner v-if="fetchingTransactions" :size="14" class="text-white" />
+              {{ fetchingTransactions ? 'Fetching Transactions…' : 'I Have Authorized — Get Statement' }}
             </button>
           </div>
         </template>
