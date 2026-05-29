@@ -204,7 +204,7 @@ async function syncStatementsFromPoll() {
     const res = await props.api.get(urls.value.index)
     const data = res?.data as { success?: boolean; data?: BankStatementRecord[] }
     if (!data?.success || !Array.isArray(data.data)) return
-    const fields = ['edoc_status', 'consent_id', 'csv_url', 'statement_generated'] as const
+    const fields = ['edoc_status', 'edoc_error', 'consent_id', 'csv_url', 'statement_generated'] as const
     bankStatements.value = bankStatements.value.map((existing) => {
       const apiRow = data.data!.find((s) => s.id === existing.id)
       if (!apiRow) return existing
@@ -648,7 +648,7 @@ onUnmounted(() => {
               Processing in progress. Please wait…
             </p>
             <p v-if="account.edoc_status === 'failed'" class="mt-1.5 text-sm text-red-600">
-              Processing failed. Please make sure you have filled in your bank details above, plus added a valid statement, and try again.
+              {{ account.edoc_error || 'Processing failed. Please make sure you have filled in your bank details above, plus added a valid statement, and try again.' }}
             </p>
           </div>
             </slot>

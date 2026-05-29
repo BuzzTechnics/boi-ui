@@ -30,6 +30,7 @@ export interface BankStatementRecord {
   csv_view_url?: string | null
   consent_id?: string
   edoc_status: 'pending' | 'processing' | 'completed' | 'failed'
+  edoc_error?: string | null
   statement_generated: boolean
   otp?: string
   showOtpInput?: boolean
