@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-import type { BankStatementRecord, BankOption, IndustrialSectorOption } from '../types/edoc'
+import type { BankStatementRecord, BankOption, IndustrialSectorOption, StateOption } from '../types/edoc'
 import { useEdocBanks } from '../composables/useEdocBanks'
 import { useAccountVerification } from '../composables/useAccountVerification'
 import { bankStatementsApi } from '../api/bankStatements'
@@ -23,8 +23,11 @@ const props = withDefaults(
       delete: (url: string) => Promise<{ data?: unknown }>
     }
     bankOptions: BankOption[]
-    formData: { email?: string; industrial_sector_id?: string | number }
+    formData: { email?: string; industrial_sector_id?: string | number; state_id?: string | number }
     industrialSectorOptions?: IndustrialSectorOption[]
+    /** Pre-resolved applicant state name; takes precedence over stateOptions lookup. */
+    stateName?: string
+    stateOptions?: StateOption[]
     /** Legacy: only prefixes bank-statement CRUD paths. Prefer integrationBaseUrl. */
     baseUrl?: string
     /** When set (e.g. deployed boi-api origin), prefixes bank statements, EDOC, and file upload URLs. */
@@ -131,6 +134,16 @@ function getIndustrialSectorName(): string | undefined {
   const id = props.formData?.industrial_sector_id
   if (id == null) return undefined
   const opt = props.industrialSectorOptions?.find(
+    (s) => s.value === id || s.id === id || s.value === String(id)
+  )
+  return opt?.label ?? opt?.name
+}
+
+function getStateName(): string | undefined {
+  if (props.stateName) return props.stateName
+  const id = props.formData?.state_id
+  if (id == null || id === '') return undefined
+  const opt = props.stateOptions?.find(
     (s) => s.value === id || s.id === id || s.value === String(id)
   )
   return opt?.label ?? opt?.name
@@ -382,11 +395,12 @@ function createAfterUpload(statement: BankStatementRecord) {
     props.blockAutoSave?.()
     statement.edoc_status = 'processing'
     const sector = getIndustrialSectorName()
+    const state = getStateName()
     const unblockAfterDelay = () => {
       setTimeout(() => props.unblockAutoSave?.(), 3000)
     }
     props.api
-      .post(urls.value.uploadToEdoc(statement.id), { filePath, industrialSector: sector })
+      .post(urls.value.uploadToEdoc(statement.id), { filePath, industrialSector: sector, state })
       .then((res) => {
         const data = (res?.data as { data?: BankStatementRecord })?.data
         if (data) {
@@ -605,6 +619,7 @@ onUnmounted(() => {
               :api="{ get: api.get, post: api.post }"
               :company-email="companyEmail"
               :industrial-sector="getIndustrialSectorName()"
+              :state="getStateName()"
               :application-id="applicationId"
               :integration-base-url="integrationBaseUrl"
               :disabled="isFormDisabled"

@@ -65,6 +65,7 @@ export type {
   EdocGetTransactionsPayload,
   BankOption,
   IndustrialSectorOption,
+  StateOption,
 } from './types/edoc'
 
 export function install(_app: App): void {

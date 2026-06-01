@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import type { BankOption, IndustrialSectorOption } from '../types/edoc'
+import type { BankOption, IndustrialSectorOption, StateOption } from '../types/edoc'
 import { ensureBoiApiSanctumCsrf } from '../composables/useBoiApiBase'
 import { nipCodeForSelect } from '../utils/nipBankCode'
 import BankStatementIntegration from './BankStatementIntegration.vue'
@@ -12,6 +12,12 @@ const props = withDefaults(
     email?: string
     industrialSectorId?: string | number
     sectorOptions?: IndustrialSectorOption[]
+    /** Pre-resolved applicant state name (e.g. application.state.name); preferred over stateId+stateOptions. */
+    stateName?: string
+    /** Applicant's state id (from the host app's application record). */
+    stateId?: string | number
+    /** States reference list ({ id/value, name/label }) used to resolve stateId to a name. */
+    stateOptions?: StateOption[]
     isFormDisabled?: boolean
     blockAutoSave?: () => void
     unblockAutoSave?: () => void
@@ -35,6 +41,9 @@ const props = withDefaults(
     email: '',
     industrialSectorId: '',
     sectorOptions: () => [],
+    stateName: '',
+    stateId: '',
+    stateOptions: () => [],
     isFormDisabled: false,
     fileViewExtraParams: () => ({}),
   },
@@ -60,6 +69,7 @@ const bankOptions = computed<BankOption[]>(() => {
 const formData = computed(() => ({
   email: props.email ?? '',
   industrial_sector_id: props.industrialSectorId ?? '',
+  state_id: props.stateId ?? '',
 }))
 
 async function primeSanctum() {
@@ -99,6 +109,8 @@ const verifyBankAccountAdapter = async (accountNumber: string, bankCode: string)
       :bank-options="bankOptions"
       :form-data="formData"
       :industrial-sector-options="sectorOptions"
+      :state-name="stateName"
+      :state-options="stateOptions"
       :is-form-disabled="isFormDisabled"
       :max-accounts="5"
       :verify-bank-account="verifyBankAccountAdapter"

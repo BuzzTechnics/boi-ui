@@ -13,6 +13,8 @@ const props = withDefaults(
     api: { post: (url: string, data: unknown) => Promise<{ data?: unknown }>; get?: (url: string) => Promise<{ data?: unknown }> }
     companyEmail?: string
     industrialSector?: string
+    /** Applicant's resolved state name; sent to eDoc instead of a hardcoded value. */
+    state?: string
     applicationId?: string | number
     disabled?: boolean
     /** Prefix for EDOC API paths when using a standalone service (e.g. boi-api). */
@@ -117,8 +119,9 @@ const consentPayload = (email: string) => ({
   referenceId: `loan_${props.applicationId ?? 'new'}_${props.account.id}`,
   firstName: 'Company',
   lastName: 'Account',
-  state: 'Lagos',
-  fundType: 'online portal',
+  state: props.state ?? 'Lagos',
+  // fundType intentionally omitted: boi-api derives it from the caller app
+  // (X-Boi-App) so each fund (GLOW/spaf/dangote) is attributed correctly.
   statementDuration: '12',
   redirectionUrl: typeof window !== 'undefined' ? window.location.origin + '/loan-application' : '',
   industrialSector: props.industrialSector ?? undefined,

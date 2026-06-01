@@ -84,3 +84,11 @@ export interface IndustrialSectorOption {
   name?: string
   id?: string | number
 }
+
+/** Applicant state of residence/business, resolved to a name for the eDoc payload. */
+export interface StateOption {
+  value: string | number
+  label?: string
+  name?: string
+  id?: string | number
+}
