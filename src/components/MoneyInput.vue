@@ -1,22 +1,22 @@
 <template>
   <div class="col-span-2 md:col-span-1 w-full">
     <div
-      class="flex items-center w-full overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm transition-colors
-        focus-within:border-primary focus-within:ring-1 focus-within:ring-primary"
-      :class="{
-        'bg-gray-100': readonly && !disabled,
-        'bg-gray-200 cursor-not-allowed': disabled,
-      }"
+      class="group flex w-full rounded-lg shadow-sm transition duration-150
+        focus-within:ring-2 focus-within:ring-primary/20"
     >
       <span
-        class="flex items-center self-stretch px-3 border-r border-gray-300 bg-gray-50 text-gray-500 select-none leading-none"
-        :class="{ 'text-gray-400 bg-gray-100': disabled }"
+        class="flex items-center justify-center min-w-[2.75rem] rounded-l-lg border border-r-0 border-gray-300
+          bg-gray-50 px-4 text-[15px] font-medium leading-none text-gray-500 select-none transition-colors
+          group-hover:border-gray-400 group-focus-within:border-primary group-focus-within:text-primary"
+        :class="{ 'border-gray-200 bg-gray-100 !text-gray-300 group-hover:border-gray-200': disabled }"
       >{{ symbol(props.currency) }}</span>
       <input
         ref="input"
         v-bind="forwardedAttrs"
-        class="flex-1 min-w-0 border-0 bg-transparent py-2 pl-1 pr-3 text-gray-900 placeholder-gray-400
-          focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:text-gray-500"
+        class="flex-1 min-w-0 rounded-r-lg border border-gray-300 bg-white px-3.5 py-2.5 text-[15px] font-medium
+          tracking-tight tabular-nums text-gray-900 transition-colors placeholder:font-normal placeholder:text-gray-400
+          group-hover:border-gray-400 read-only:bg-gray-50 focus:border-primary focus:outline-none focus:ring-0
+          disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
         :value="displayValue"
         @focus="focused = true"
         @blur="focused = false"
