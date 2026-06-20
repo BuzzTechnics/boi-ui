@@ -1,38 +1,42 @@
 <template>
-  <div class="form-group col-span-2 md:col-span-1 border-none p-0">
-    <div class="relative w-full flex">
-      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        {{ symbol(props.currency) }}
-      </div>
+  <div class="col-span-2 md:col-span-1 w-full">
+    <div
+      class="group flex w-full rounded-lg shadow-sm transition duration-150
+        focus-within:ring-2 focus-within:ring-primary/20"
+    >
+      <span
+        class="flex items-center justify-center min-w-[2.75rem] rounded-l-lg border border-r-0 border-gray-300
+          bg-gray-50 px-4 text-[15px] font-medium leading-none text-gray-500 select-none transition-colors
+          group-hover:border-gray-400 group-focus-within:border-primary group-focus-within:text-primary"
+        :class="{ 'border-gray-200 bg-gray-100 !text-gray-300 group-hover:border-gray-200': disabled }"
+      >{{ symbol(props.currency) }}</span>
       <input
         ref="input"
-        :class="[
-          { 'bg-gray-100': readonly },
-          { 'bg-gray-200 text-gray-500 cursor-not-allowed': disabled },
-          'pl-8 w-full border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm',
-        ]"
-        :value="props.modelValue"
+        v-bind="forwardedAttrs"
+        class="flex-1 min-w-0 rounded-r-lg border border-gray-300 bg-white px-3.5 py-2.5 text-[15px] font-medium
+          tracking-tight tabular-nums text-gray-900 transition-colors placeholder:font-normal placeholder:text-gray-400
+          group-hover:border-gray-400 read-only:bg-gray-50 focus:border-primary focus:outline-none focus:ring-0
+          disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+        :value="displayValue"
+        @focus="focused = true"
+        @blur="focused = false"
         @input="onInput"
         @keypress="preventNonNumericInput"
         :readonly="readonly"
         :disabled="disabled"
-        type="number"
-        step="0.01"
-        min="0"
+        type="text"
         inputmode="decimal"
-        pattern="[0-9]*[.]?[0-9]*"
         placeholder="0.00"
       />
-    </div>
-    <div class="mt-1 text-sm text-gray-600 font-medium">
-      {{ numberWithCommas(props.modelValue, props.currency) }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import numeral from 'numeral'
-import { onMounted, ref } from 'vue'
+import numeral from 'numeral';
+import { computed, onMounted, ref, useAttrs } from 'vue';
+
+defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
   defineProps<{
@@ -53,6 +57,25 @@ const emit = defineEmits<{
 }>()
 
 const input = ref<HTMLInputElement | null>(null)
+const focused = ref(false)
+
+// Forward consumer attrs (id, name, @input validators, etc.) to the inner <input>,
+// but drop class/style so a stray utility like `form-input` can't draw a second border
+// on the wrapper. The component styles itself.
+const attrs = useAttrs()
+const forwardedAttrs = computed(() => {
+  const { class: _class, style: _style, ...rest } = attrs as Record<string, unknown>
+  return rest
+})
+
+// While editing, show the raw value so typing stays jank-free (no comma cursor jumps).
+// When not focused, show the grouped, two-decimal amount.
+const displayValue = computed(() => {
+  const v = props.modelValue
+  if (focused.value) return v == null ? '' : String(v)
+  if (v == null || v === '' || isNaN(Number(v))) return ''
+  return numeral(v).format('0,0.00')
+})
 
 const sanitizeNumericInput = (value: string) => {
   if (!value) return ''
@@ -89,13 +112,6 @@ const symbol = (code: string) => {
   if (code === 'NGN') return '₦'
   if (code === 'USD') return '$'
   return ''
-}
-
-const numberWithCommas = (x: string | number | undefined, code: string | null = null) => {
-  if (x != null && x !== '' && !isNaN(Number(x))) {
-    return symbol(code || '') + numeral(x).format('0,0.00')
-  }
-  return symbol(code || '') + '0.00'
 }
 
 const onInput = (e: Event) => {
