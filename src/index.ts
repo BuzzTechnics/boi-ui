@@ -18,6 +18,15 @@ export { default as MoneyInput } from './components/MoneyInput.vue'
 export { default as BvnNinVerify } from './components/BvnNinVerify.vue'
 export { default as PhoneInput } from './components/PhoneInput.vue'
 
+// Shared form primitives (generic inputs/labels/buttons used across intervention forms)
+export { default as TextInput } from './components/TextInput.vue'
+export { default as TextareaInput } from './components/TextareaInput.vue'
+export { default as SelectInput } from './components/SelectInput.vue'
+export { default as InputLabel } from './components/InputLabel.vue'
+export { default as InputError } from './components/InputError.vue'
+export { default as AddItemButton } from './components/AddItemButton.vue'
+export { default as RemoveItemButton } from './components/RemoveItemButton.vue'
+
 export { useEdocBanks } from './composables/useEdocBanks'
 export type { UseEdocBanksOptions } from './composables/useEdocBanks'
 export { useAccountVerification } from './composables/useAccountVerification'
