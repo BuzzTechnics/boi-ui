@@ -1,7 +1,7 @@
 <template>
   <div class="col-span-2 md:col-span-1 w-full">
     <div
-      class="flex items-center w-full rounded-md border border-gray-300 bg-white shadow-sm transition-colors
+      class="flex items-center w-full overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm transition-colors
         focus-within:border-primary focus-within:ring-1 focus-within:ring-primary"
       :class="{
         'bg-gray-100': readonly && !disabled,
@@ -9,8 +9,8 @@
       }"
     >
       <span
-        class="pl-3 pr-1 text-gray-500 select-none leading-none"
-        :class="{ 'text-gray-400': disabled }"
+        class="flex items-center self-stretch px-3 border-r border-gray-300 bg-gray-50 text-gray-500 select-none leading-none"
+        :class="{ 'text-gray-400 bg-gray-100': disabled }"
       >{{ symbol(props.currency) }}</span>
       <input
         ref="input"
@@ -33,8 +33,8 @@
 </template>
 
 <script setup lang="ts">
-import numeral from 'numeral'
-import { computed, onMounted, ref, useAttrs } from 'vue'
+import numeral from 'numeral';
+import { computed, onMounted, ref, useAttrs } from 'vue';
 
 defineOptions({ inheritAttrs: false })
 
