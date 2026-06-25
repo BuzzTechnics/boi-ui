@@ -20,6 +20,7 @@ export { default as PhoneInput } from './components/PhoneInput.vue'
 
 // Shared form primitives (generic inputs/labels/buttons used across intervention forms)
 export { default as TextInput } from './components/TextInput.vue'
+export { default as PasswordInput } from './components/PasswordInput.vue'
 export { default as TextareaInput } from './components/TextareaInput.vue'
 export { default as SelectInput } from './components/SelectInput.vue'
 export { default as InputLabel } from './components/InputLabel.vue'
