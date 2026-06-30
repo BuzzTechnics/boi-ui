@@ -77,9 +77,10 @@ import { ref, computed, onBeforeUnmount } from 'vue'
  *   - base URL: `resolveBoiApiBaseUrl({ boiProxy })` (passed in as `boiApiBaseUrl`)
  *   - axios:    an axios-like client (passed in as `api`, shape { get, post })
  *
- * Endpoints (NOT blocked by RejectBlockedBoiProxyPaths):
- *   POST {base}/mandates/initiate    -> { success, data: { mandateId, authorizationUrl, status } }
- *   GET  {base}/mandates/{id}/status -> { success, data: { mandateId, status, confirmed } }
+ * Endpoints (NOT blocked by RejectBlockedBoiProxyPaths) — `base()` appends the `/api`
+ * segment the boi-api routes live under, so consumers pass the bare proxy/base root:
+ *   POST {base}/api/mandates/initiate    -> { success, data: { mandateId, authorizationUrl, status } }
+ *   GET  {base}/api/mandates/{id}/status -> { success, data: { mandateId, status, confirmed } }
  *
  * The Global-Standing (sweep) mandate's authoritative "ready" signal is async (Mono
  * sends events.mandates.ready up to 24 h later, handled by the consumer app's
@@ -167,7 +168,13 @@ function unwrap(res: unknown): Record<string, unknown> {
 }
 
 function base(): string {
-  return String(props.boiApiBaseUrl || '').replace(/\/+$/, '')
+  const raw = String(props.boiApiBaseUrl || '').replace(/\/+$/, '')
+  if (!raw) return ''
+  // boi-api mandate routes live under `/api` (like /api/banks, /api/.../bank-statements).
+  // `boiApiBaseUrl` is the proxy/base root from resolveBoiApiBaseUrl (no `/api`), so append
+  // it here — consumers shouldn't have to. Idempotent: a base that already ends in `/api`
+  // (older consumers that compensated) is left untouched, never doubled.
+  return /\/api$/.test(raw) ? raw : `${raw}/api`
 }
 
 function stopPolling(): void {
