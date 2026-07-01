@@ -11,13 +11,58 @@
         <path stroke-linecap="round" stroke-linejoin="round"
           d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
       </svg>
-      <div>
+      <div class="min-w-0 flex-1">
         <p class="text-sm font-semibold text-green-800">
           GSI mandate authorized &#10003;
         </p>
-        <p v-if="mandateId" class="text-xs text-green-700 mt-0.5 break-all">
+
+        <dl class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-green-800">
+          <div v-if="bankLabel" class="flex gap-1">
+            <dt class="text-green-700/70">Bank:</dt>
+            <dd class="font-medium">{{ bankLabel }}</dd>
+          </div>
+          <div v-if="maskedAccount" class="flex gap-1">
+            <dt class="text-green-700/70">Account:</dt>
+            <dd class="font-medium">{{ maskedAccount }}</dd>
+          </div>
+          <div v-if="amountLabel" class="flex gap-1">
+            <dt class="text-green-700/70">Amount:</dt>
+            <dd class="font-medium">{{ amountLabel }}</dd>
+          </div>
+          <div v-if="statusLabel" class="flex gap-1">
+            <dt class="text-green-700/70">Status:</dt>
+            <dd class="font-medium">{{ statusLabel }}</dd>
+          </div>
+        </dl>
+
+        <p v-if="mandateId" class="text-xs text-green-700 mt-1 break-all">
           Mandate ID: {{ mandateId }}
         </p>
+
+        <p v-if="polling" class="mt-2 text-xs text-green-700">
+          A new tab was opened to re-authorize the mandate at your bank. This panel
+          updates automatically once the new authorization is confirmed.
+        </p>
+
+        <button
+          type="button"
+          :disabled="isDisabled"
+          @click="authorize"
+          class="mt-3 inline-flex items-center px-3 py-1.5 bg-white border border-green-300 rounded-md font-semibold text-xs text-green-800 uppercase tracking-widest hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <svg
+            v-if="busy"
+            class="animate-spin -ml-0.5 mr-2 h-3.5 w-3.5 text-green-700"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          {{ inFlight ? 'Starting…' : polling ? 'Waiting for authorization…' : 'Re-authorize' }}
+        </button>
       </div>
     </div>
 
@@ -127,12 +172,15 @@ const props = withDefaults(
     boiApiBaseUrl?: string
     /** Axios-like client { get, post } — pass apiNoReload (mirrors BankStatements). */
     api: GsiApiClient
+    /** Optional display-only bank name for the confirmed summary (widget only has a code). */
+    bankName?: string
   }>(),
   {
     amount: 0,
     modelValue: () => ({ mandateId: '', status: '', confirmed: false }),
     disabled: false,
     boiApiBaseUrl: '',
+    bankName: '',
   },
 )
 
@@ -156,6 +204,21 @@ const status = computed(() => props.modelValue?.status || '')
 
 const busy = computed(() => inFlight.value || polling.value)
 const isDisabled = computed(() => props.disabled || busy.value)
+
+// --- Confirmed-state summary (display only) ---------------------------------
+const maskedAccount = computed(() => {
+  const digits = String(props.account?.accountNumber || '').replace(/\D+/g, '')
+  return digits ? '••••' + digits.slice(-4) : ''
+})
+const bankLabel = computed(() => props.bankName || props.account?.bankCode || '')
+const amountLabel = computed(() => {
+  const naira = Number(props.amount) || 0
+  return naira > 0 ? '₦' + naira.toLocaleString('en-NG') : ''
+})
+const statusLabel = computed(() => {
+  const s = String(status.value || '').replace(/[_-]+/g, ' ').trim()
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
+})
 
 /** boi-api responses are wrapped: { success, data } — sometimes nested under .data (axios). */
 function unwrap(res: unknown): Record<string, unknown> {
