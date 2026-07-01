@@ -18,6 +18,7 @@ export { default as MoneyInput } from './components/MoneyInput.vue'
 export { default as BvnNinVerify } from './components/BvnNinVerify.vue'
 export { default as PhoneInput } from './components/PhoneInput.vue'
 export { default as GsiMandateIntegration } from './components/GsiMandateIntegration.vue'
+export { default as ContactSupportWidget } from './components/ContactSupportWidget.vue'
 
 // Shared form primitives (generic inputs/labels/buttons used across intervention forms)
 export { default as TextInput } from './components/TextInput.vue'
