@@ -29,6 +29,14 @@
         placeholder="0.00"
       />
     </div>
+    <!-- Live grouped-amount preview while typing (the field itself shows raw digits
+         when focused to avoid cursor jumps), so users don't have to count zeros. -->
+    <p
+      v-if="previewFormatted && focused && formattedPreview"
+      class="mt-1 text-xs font-medium tabular-nums text-gray-500"
+    >
+      {{ formattedPreview }}
+    </p>
   </div>
 </template>
 
@@ -44,11 +52,14 @@ const props = withDefaults(
     currency?: string
     readonly?: boolean
     disabled?: boolean
+    /** Show the live comma-grouped amount below the field while typing. */
+    previewFormatted?: boolean
   }>(),
   {
     currency: 'NGN',
     readonly: false,
     disabled: false,
+    previewFormatted: true,
   },
 )
 
@@ -75,6 +86,13 @@ const displayValue = computed(() => {
   if (focused.value) return v == null ? '' : String(v)
   if (v == null || v === '' || isNaN(Number(v))) return ''
   return numeral(v).format('0,0.00')
+})
+
+// Grouped, symbol-prefixed amount for the live preview (empty until a valid number).
+const formattedPreview = computed(() => {
+  const v = props.modelValue
+  if (v == null || v === '' || isNaN(Number(v))) return ''
+  return symbol(props.currency) + numeral(v).format('0,0.00')
 })
 
 const sanitizeNumericInput = (value: string) => {
