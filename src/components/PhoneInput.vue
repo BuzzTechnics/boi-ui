@@ -2,10 +2,11 @@
   <div class="border-none p-0">
     <input
       ref="phoneInput"
-      class="py-2 px-3 border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm w-full block"
+      class="py-2 px-3 border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm w-full block disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
       :value="modelValue"
       type="tel"
       :required="required"
+      :disabled="disabled"
       :maxlength="15"
       @input="process(($event.target as HTMLInputElement).value)"
     />
@@ -21,12 +22,14 @@ const props = withDefaults(
   defineProps<{
     modelValue?: string
     required?: boolean
+    disabled?: boolean
     /** When set, used for ipinfo.io geo lookup; otherwise defaults to Nigeria. */
     ipinfoToken?: string
   }>(),
   {
     modelValue: '',
     required: false,
+    disabled: false,
   },
 )
 

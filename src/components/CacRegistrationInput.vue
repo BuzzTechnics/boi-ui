@@ -12,7 +12,7 @@
       :disabled="disabled"
       :value="inputValue"
       type="text"
-      class="form-input w-full border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm"
+      class="form-input w-full border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
       :placeholder="placeholder"
       maxlength="20"
       @input="onInput"
