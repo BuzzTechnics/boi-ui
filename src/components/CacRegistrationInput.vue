@@ -37,7 +37,7 @@
       <span v-else>Verified <i class="fas fa-check"></i></span>
     </small>
     <small v-else class="mt-1 block text-xs text-gray-500">
-      Must start with RC or BN followed by numbers (e.g., RC2 or BN3)
+      Must start with at least 2 capital letters followed by numbers (e.g., RC123456, BN123456, LP12345)
     </small>
   </div>
 </template>
@@ -67,7 +67,7 @@ const props = withDefaults(
     label: 'Registration Number',
     required: false,
     disabled: false,
-    placeholder: 'Will automatically start with RC or BN',
+    placeholder: 'e.g. RC123456',
     enableCacVerification: false,
     externalVerified: false,
     externalVerifiedMessage: undefined,
@@ -91,40 +91,27 @@ const verifying = ref(false)
 const wrapperRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
+// A business registration number may use any prefix (RC, BN, LP, IT, …); it just has
+// to start with at least two capital letters followed by digits.
 const isValidFormat = computed(() => {
   const val = inputValue.value
   if (!val) return false
   const value = String(val).toUpperCase().trim()
-  return /^(RC|BN)\d+$/.test(value)
+  return /^[A-Z]{2,}\d+$/.test(value)
 })
 
 const preventNonNumericAfterPrefix = (event: KeyboardEvent) => {
-  const value = inputValue.value.toUpperCase()
-
-  if ((value.startsWith('RC') || value.startsWith('BN')) && value.length >= 2) {
-    const key = event.key
-    if (!/[0-9]/.test(key)) {
-      event.preventDefault()
-    }
+  // Allow only letters and digits (letters form the prefix, digits the number).
+  if (event.key.length === 1 && !/[A-Za-z0-9]/.test(event.key)) {
+    event.preventDefault()
   }
 }
 
+// Normalise: uppercase and strip anything that isn't a letter or digit. We no longer
+// force an RC/BN prefix — the prefix can be any 2+ capital letters.
 const validateRegistrationNumber = (value: string) => {
   if (!value) return value || ''
-  let v = value.toUpperCase()
-  if (v === 'B' || v === 'BN' || v === 'R' || v === 'RC') return v
-  if (v.startsWith('B') && v.length > 1 && !v.startsWith('BN')) {
-    v = 'BN' + v.substring(1).replace(/[^0-9]/g, '')
-  } else if (v.startsWith('R') && v.length > 1 && !v.startsWith('RC')) {
-    v = 'RC' + v.substring(1).replace(/[^0-9]/g, '')
-  } else if (!v.startsWith('R') && !v.startsWith('B')) {
-    v = 'RC' + v.replace(/[^0-9]/g, '')
-  } else if (v.startsWith('RC') || v.startsWith('BN')) {
-    const prefix = v.substring(0, 2)
-    const numbers = v.substring(2).replace(/[^0-9]/g, '')
-    v = prefix + numbers
-  }
-  return v
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
 const verifyCac = async (rcNumber: string) => {
@@ -191,7 +178,7 @@ const validate = async () => {
   const validatedValue = validateRegistrationNumber(inputValue.value)
   if (!isValidFormat.value) {
     errorMessage.value =
-      '<span class="text-red-700">Valid format required (e.g., RC2 or BN3) <i class="fas fa-exclamation-triangle"></i></span>'
+      '<span class="text-red-700">Enter a valid registration number — at least 2 capital letters then digits (e.g., RC123456) <i class="fas fa-exclamation-triangle"></i></span>'
     return
   }
   await verifyCac(validatedValue)
