@@ -16,6 +16,11 @@ const props = withDefaults(
     stateName?: string
     /** Applicant's state id (from the host app's application record). */
     stateId?: string | number
+    /**
+     * Registered company name. eDoc shows this on their dashboard and it was blank for
+     * every BOI row; boi-api stores it on the statement so the auto-submit can send it.
+     */
+    companyName?: string
     /** States reference list ({ id/value, name/label }) used to resolve stateId to a name. */
     stateOptions?: StateOption[]
     isFormDisabled?: boolean
@@ -111,6 +116,7 @@ const verifyBankAccountAdapter = async (accountNumber: string, bankCode: string)
       :industrial-sector-options="sectorOptions"
       :state-name="stateName"
       :state-options="stateOptions"
+      :company-name="companyName"
       :is-form-disabled="isFormDisabled"
       :max-accounts="5"
       :verify-bank-account="verifyBankAccountAdapter"

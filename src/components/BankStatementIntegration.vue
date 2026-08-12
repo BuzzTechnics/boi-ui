@@ -27,6 +27,8 @@ const props = withDefaults(
     industrialSectorOptions?: IndustrialSectorOption[]
     /** Pre-resolved applicant state name; takes precedence over stateOptions lookup. */
     stateName?: string
+    /** Registered company name, stored on the statement so eDoc's Company column is filled. */
+    companyName?: string
     stateOptions?: StateOption[]
     /** Legacy: only prefixes bank-statement CRUD paths. Prefer integrationBaseUrl. */
     baseUrl?: string
@@ -325,7 +327,12 @@ async function handleAddAccount() {
   activeIndex.value = bankStatements.value.length - 1
 
   try {
-    const res = await props.api.post(urls.value.store, { email: companyEmail.value })
+    // company_name travels with the row: boi-api's observer auto-submits to eDoc on a
+    // database write, so it has no other way to learn the company.
+    const res = await props.api.post(urls.value.store, {
+      email: companyEmail.value,
+      ...(props.companyName ? { company_name: props.companyName } : {}),
+    })
     const data = res?.data as { success?: boolean; data?: BankStatementRecord }
     if (data?.success && data.data) {
       const idx = bankStatements.value.findIndex((s) => s.id === tempId)
