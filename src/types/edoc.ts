@@ -7,6 +7,14 @@ export interface EdocBank {
   enabled?: boolean
   mandateEnabled?: boolean
   bankInstructions?: string[]
+  /**
+   * The bank matches the forwarded statement to the consent by the email the
+   * CUSTOMER registered with the bank (Fidelity is the first; Joseph/eDoc,
+   * 05-Aug-2026). Consumers must collect that address for the consent instead
+   * of defaulting to their own account email — a portal address silently
+   * strands the request on eDoc's side.
+   */
+  requiresBankRegisteredEmail?: boolean
 }
 
 export interface BankStatementRecord {

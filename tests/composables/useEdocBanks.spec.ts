@@ -66,6 +66,29 @@ describe('useEdocBanks', () => {
     expect(edocBanks.value).toEqual([])
   })
 
+  it('normalizes the bank-registered-email flag from either spelling and answers by code', async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: [
+          { bankId: 1, name: 'Fidelity', bankCode: '070', requires_bank_registered_email: true },
+          { bankId: 2, name: 'ALAT', bankCode: '035A', requiresBankRegisteredEmail: false },
+          { bankId: 3, name: 'GTB', bankCode: '058' },
+        ],
+      },
+    })
+    const { loadBanksForStatement, edocBanks, bankRequiresRegisteredEmail } = useEdocBanks({ get })
+
+    await loadBanksForStatement()
+
+    expect(edocBanks.value[0].requiresBankRegisteredEmail).toBe(true)
+    expect(bankRequiresRegisteredEmail('070')).toBe(true)
+    // EDOC sometimes strips leading zeroes; codes are matched as equivalents.
+    expect(bankRequiresRegisteredEmail('70')).toBe(true)
+    expect(bankRequiresRegisteredEmail('058')).toBe(false)
+    expect(bankRequiresRegisteredEmail('')).toBe(false)
+  })
+
   it('uses fallback URL when primary fails', async () => {
     const get = vi.fn()
       .mockRejectedValueOnce(new Error('network'))

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { EdocBank } from '../types/edoc'
 import { edocApi } from '../api/edoc'
+import { bankCodesEquivalent } from '../utils/bankCodesEquivalent'
 
 export interface UseEdocBanksOptions {
   get: (url: string) => Promise<{ data?: unknown }>
@@ -13,11 +14,25 @@ function toBanksList(data: unknown): EdocBank[] {
   if (!data || typeof data !== 'object') return []
   const d = data as Record<string, unknown>
   const raw = (d.success ? d.data : d.data ?? d) as unknown
-  if (Array.isArray(raw)) return raw as EdocBank[]
+  if (Array.isArray(raw)) return normalizeBanks(raw)
   if (raw && typeof raw === 'object' && Array.isArray((raw as Record<string, unknown>).data)) {
-    return (raw as Record<string, EdocBank[]>).data
+    return normalizeBanks((raw as Record<string, unknown[]>).data)
   }
   return []
+}
+
+/**
+ * The eDoc master list is camelCase while product fallback endpoints tend to be
+ * snake_case; fold both spellings of the bank-registered-email flag onto the
+ * typed field so consumers only ever look in one place.
+ */
+function normalizeBanks(rows: unknown[]): EdocBank[] {
+  return rows.map((row) => {
+    if (!row || typeof row !== 'object') return row as EdocBank
+    const r = row as Record<string, unknown>
+    const flag = r.requiresBankRegisteredEmail ?? r.requires_bank_registered_email
+    return (flag === undefined ? row : { ...r, requiresBankRegisteredEmail: flag === true }) as EdocBank
+  })
 }
 
 function resolveUrl(u: string | (() => string) | undefined, fallback: string): string {
@@ -57,7 +72,7 @@ export function useEdocBanks(options: UseEdocBanksOptions) {
       if (fallbackUrl) {
         try {
           const fallback = await get(fallbackUrl)
-          const list = Array.isArray(fallback?.data) ? (fallback.data as EdocBank[]) : []
+          const list = Array.isArray(fallback?.data) ? normalizeBanks(fallback.data as unknown[]) : []
           edocBanks.value = banks.value = list
           return list
         } catch (err: unknown) {
@@ -74,12 +89,30 @@ export function useEdocBanks(options: UseEdocBanksOptions) {
     return banksPromise
   }
 
+  /**
+   * Whether the bank matches forwarded statements by the email the customer
+   * registered with the BANK (Fidelity is the first). When true, the consent
+   * must carry that address — never the product's own account email, which
+   * silently strands the eDoc request.
+   */
+  const bankRequiresRegisteredEmail = (bankCode: string): boolean => {
+    const code = (bankCode ?? '').trim()
+    if (code === '') return false
+
+    return banks.value.some(
+      (bank) =>
+        bank.requiresBankRegisteredEmail === true &&
+        (bankCodesEquivalent(bank.bankCode ?? '', code) || bankCodesEquivalent(bank.code ?? '', code))
+    )
+  }
+
   return {
     edocBanks,
     banks,
     loading: loadingBanks,
     error: errorBanks,
     loadBanksForStatement,
+    bankRequiresRegisteredEmail,
     invalidateCache: () => {
       edocBanks.value = banks.value = []
       banksPromise = null
