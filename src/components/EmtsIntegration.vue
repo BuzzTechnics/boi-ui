@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { BankStatementRecord, EdocBank, BankOption } from '../types/edoc'
 import { edocApi } from '../api/edoc'
 import { edocRowMatchesLocalBank } from '../utils/bankCodesEquivalent'
@@ -32,6 +32,7 @@ function edocPath(path: string): string {
 
 const emit = defineEmits<{
   'update:consentId': [consentId: string]
+  'update:email': [email: string]
   'statement-retrieved': [statement: BankStatementRecord]
   'error': [message: string]
 }>()
@@ -84,10 +85,44 @@ function matchBank(bankCode: string, enabledOnly = false): EdocBank | undefined 
 const getEdocBank = (code: string) => matchBank(code, false)
 const isBankEdocSupported = (code: string) => !!matchBank(code, true)
 const hasBankInstructions = computed(() => !!getEdocBank(props.account.bank)?.bankInstructions?.length)
+
+// Fidelity-style banks match the forwarded statement to the consent by the
+// email the customer registered with the BANK, so the consent must carry that
+// address — the product's own account email silently strands the request.
+const requiresRegisteredEmail = computed(
+  () => getEdocBank(props.account.bank)?.requiresBankRegisteredEmail === true
+)
+
+function seedRegisteredEmail(): string {
+  // account.email is seeded with the product account email on row creation;
+  // that default is exactly the address that must NOT go on the consent, so
+  // only a value that differs from it counts as deliberately entered.
+  const saved = String(props.account.email ?? '').trim()
+  return saved && saved !== String(props.companyEmail ?? '').trim() ? saved : ''
+}
+
+const registeredEmail = ref(seedRegisteredEmail())
+watch(
+  () => props.account.id,
+  () => { registeredEmail.value = seedRegisteredEmail() }
+)
+
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+const registeredEmailOk = computed(() => isValidEmail(registeredEmail.value.trim()))
+const registeredEmailSatisfied = computed(
+  () => !requiresRegisteredEmail.value || registeredEmailOk.value
+)
+
+function onRegisteredEmailBlur() {
+  const v = registeredEmail.value.trim()
+  if (v && isValidEmail(v)) emit('update:email', v)
+}
+
 const canRequestOtp = computed(() => {
   const a = props.account
   const digits = getSanitizedAccountNumber(a.account_number)
   return !!a.bank && digits.length === 10 && !generatingStatement.value && !submittingOtp.value
+    && registeredEmailSatisfied.value
 })
 
 const canRetrieveStatement = computed(() => {
@@ -96,6 +131,7 @@ const canRetrieveStatement = computed(() => {
     && digits.length === 10
     && !requestingStatement.value
     && !fetchingTransactions.value
+    && registeredEmailSatisfied.value
 })
 
 // True once the bank-side request has been registered (consent_id set) and we
@@ -128,7 +164,11 @@ const consentPayload = (email: string) => ({
 })
 
 async function consentAndAttach(edocBank: EdocBank, accountNumberDigits: string) {
-  const email = props.account.email || props.companyEmail || ''
+  // For registered-email banks the collected address is the only acceptable
+  // one — never fall back to the product account email (see requiresRegisteredEmail).
+  const email = requiresRegisteredEmail.value
+    ? registeredEmail.value.trim()
+    : props.account.email || props.companyEmail || ''
   const res = await props.api.post(edocPath(edocApi.initializeConsent()), consentPayload(email))
   const data = res?.data as { success?: boolean; data?: { data?: { consentId?: string } }; message?: string }
   if (!data?.success) throw new Error(data?.message ?? 'Failed to initialize consent')
@@ -140,6 +180,9 @@ async function consentAndAttach(edocBank: EdocBank, accountNumberDigits: string)
   if (!Number.isFinite(bankId) || bankId < 1) {
     throw new Error('Invalid EDOC bank id for selected bank')
   }
+  // Make sure the row itself carries the customer's address too: boi-api's
+  // observer auto-submit reads statement.email, not the consent we made here.
+  if (requiresRegisteredEmail.value) emit('update:email', email)
   await props.api.post(edocPath(edocApi.attachAccount()), {
     consentId,
     bankId,
@@ -160,6 +203,9 @@ async function generateStatement() {
   const digits = getSanitizedAccountNumber(props.account.account_number)
   if (digits.length !== 10) return emit('error', 'Please provide a valid 10-digit account number')
   if (!edocBank) return emit('error', 'Selected bank does not support electronic statement retrieval')
+  if (!registeredEmailSatisfied.value) {
+    return emit('error', `Please enter the email address registered with ${edocBank.name || 'your bank'}`)
+  }
   generatingStatement.value = true
   try {
     await consentAndAttach(edocBank, digits)
@@ -210,6 +256,9 @@ async function requestStatementWithInstructions() {
     return emit('error', 'Please select a bank and provide a valid 10-digit account number')
   }
   if (!edocBank) return emit('error', 'Selected bank does not support electronic statement retrieval')
+  if (!registeredEmailSatisfied.value) {
+    return emit('error', `Please enter the email address registered with ${edocBank.name || 'your bank'}`)
+  }
   requestingStatement.value = true
   try {
     await consentAndAttach(edocBank, digits)
@@ -284,6 +333,31 @@ async function fetchTransactionsAfterAuthorization() {
       </div>
 
       <template v-else>
+        <!-- Registered-email banks (Fidelity): the bank mails the statement to this
+             address itself, so it must be the one on file with the bank. -->
+        <div v-if="requiresRegisteredEmail && !account.statement_generated" class="rounded-lg border-2 border-primary bg-white p-4">
+          <label class="mb-1.5 block text-sm font-medium text-gray-700" :for="`bank_registered_email_${account.id}`">
+            Email address registered with {{ getEdocBank(account.bank)?.name || 'your bank' }}
+          </label>
+          <input
+            :id="`bank_registered_email_${account.id}`"
+            v-model="registeredEmail"
+            type="email"
+            autocomplete="email"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+            placeholder="e.g. name@example.com"
+            :disabled="disabled"
+            @blur="onRegisteredEmailBlur"
+          />
+          <p class="mt-1.5 break-words text-xs text-gray-600">
+            {{ getEdocBank(account.bank)?.name || 'Your bank' }} sends the statement to this address, so it
+            <strong>must be the email you registered with the bank</strong> — a different address means the statement never arrives.
+          </p>
+          <p v-if="registeredEmail.trim() && !registeredEmailOk" class="mt-1 text-xs text-red-600">
+            Please enter a valid email address
+          </p>
+        </div>
+
         <!-- Banks WITH instructions (simplified flow) -->
         <template v-if="hasBankInstructions && !account.statement_generated">
           <div class="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 text-sm">

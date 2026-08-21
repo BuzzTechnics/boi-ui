@@ -380,6 +380,15 @@ function onConsentId(statement: BankStatementRecord, consentId: string) {
   saveStatement(statement)
 }
 
+// Registered-email banks (Fidelity): EmtsIntegration collected the customer's
+// bank-registered address; persist it on the row so boi-api's auto-submit path
+// (which reads statement.email) uses it too.
+function onAccountEmail(statement: BankStatementRecord, email: string) {
+  if (statement.email === email) return
+  statement.email = email
+  saveStatement(statement)
+}
+
 function onStatementRetrieved(statement: BankStatementRecord, updated: BankStatementRecord) {
   Object.assign(statement, updated)
   saveStatement(statement)
@@ -631,6 +640,7 @@ onUnmounted(() => {
               :integration-base-url="integrationBaseUrl"
               :disabled="isFormDisabled"
               @update:consent-id="onConsentId(account, $event)"
+              @update:email="onAccountEmail(account, $event)"
               @statement-retrieved="onStatementRetrieved(account, $event)"
               @error="onEdocError"
             />

@@ -153,3 +153,95 @@ describe('EmtsIntegration — instruction-bank two-step flow', () => {
     expect(calledUrls.some((u) => u.includes('consent/transactions'))).toBe(false)
   })
 })
+
+describe('EmtsIntegration — registered-email banks (Fidelity)', () => {
+  const fidelityBank: EdocBank = {
+    bankId: 7,
+    name: 'Fidelity Bank',
+    bankCode: '058',
+    enabled: true,
+    bankInstructions: ['Log in to your account', 'Send Account Statement'],
+    requiresBankRegisteredEmail: true,
+  } as EdocBank
+
+  const mountFidelity = (accountOver: Partial<BankStatementRecord> = {}, companyEmail = 'portal@company.com') => {
+    const { calls, api } = makeApi()
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account: baseAccount({ email: companyEmail, ...accountOver }),
+        edocBanks: [fidelityBank],
+        bankOptions: [bankOption],
+        api,
+        companyEmail,
+        applicationId: 100,
+      },
+    })
+    return { calls, wrapper }
+  }
+
+  it('renders the registered-email input and starts empty when the row only holds the product email', () => {
+    const { wrapper } = mountFidelity()
+    const input = wrapper.find('input[type="email"]')
+    expect(input.exists()).toBe(true)
+    expect((input.element as HTMLInputElement).value).toBe('')
+    expect(wrapper.text()).toContain('Email address registered with Fidelity Bank')
+  })
+
+  it('pre-fills a previously saved address that differs from the product email', () => {
+    const { wrapper } = mountFidelity({ email: 'customer@fidelity-user.ng' })
+    const input = wrapper.find('input[type="email"]')
+    expect((input.element as HTMLInputElement).value).toBe('customer@fidelity-user.ng')
+  })
+
+  it('does not render the input for banks without the flag', () => {
+    const { api } = makeApi()
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account: baseAccount(),
+        edocBanks: [instructionBank],
+        bankOptions: [bankOption],
+        api,
+        applicationId: 100,
+      },
+    })
+    expect(wrapper.find('input[type="email"]').exists()).toBe(false)
+  })
+
+  it('blocks Retrieve Statement until a valid registered email is entered', async () => {
+    const { calls, wrapper } = mountFidelity()
+    const btn = wrapper.findAll('button[type="button"]').find((b) => b.text().includes('Retrieve Statement'))!
+    expect(btn.attributes('disabled')).toBeDefined()
+
+    await btn.trigger('click')
+    await flushPromises()
+    expect(calls.length).toBe(0)
+
+    await wrapper.find('input[type="email"]').setValue('customer@fidelity-user.ng')
+    expect(btn.attributes('disabled')).toBeUndefined()
+  })
+
+  it('sends the entered email on the consent — never the product email — and bubbles it up', async () => {
+    const { calls, wrapper } = mountFidelity()
+    await wrapper.find('input[type="email"]').setValue('customer@fidelity-user.ng')
+
+    const btn = wrapper.findAll('button[type="button"]').find((b) => b.text().includes('Retrieve Statement'))!
+    await btn.trigger('click')
+    await flushPromises()
+
+    const init = calls.find((c) => c.url.includes('consent/initialize'))
+    expect((init?.data as { email?: string })?.email).toBe('customer@fidelity-user.ng')
+
+    // parent persists it on the row so boi-api's auto-submit path reads it too
+    const emailEvents = wrapper.emitted('update:email')
+    expect(emailEvents?.some((e) => e[0] === 'customer@fidelity-user.ng')).toBe(true)
+  })
+
+  it('emits update:email on blur so the address is saved before any consent call', async () => {
+    const { wrapper } = mountFidelity()
+    const input = wrapper.find('input[type="email"]')
+    await input.setValue('customer@fidelity-user.ng')
+    await input.trigger('blur')
+
+    expect(wrapper.emitted('update:email')?.[0]?.[0]).toBe('customer@fidelity-user.ng')
+  })
+})
