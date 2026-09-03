@@ -418,10 +418,19 @@ async function fetchTransactionsAfterAuthorization() {
           <div v-else class="rounded-lg border-2 border-primary bg-primary/5 p-4">
             <div class="mb-3 flex items-center gap-2">
               <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">2</div>
-              <h5 class="text-sm font-bold text-gray-900">Authorize in Your Bank App</h5>
+              <h5 class="text-sm font-bold text-gray-900">
+                {{ requiresRegisteredEmail ? 'Send Your Statement from Your Bank App' : 'Authorize in Your Bank App' }}
+              </h5>
             </div>
+            <!-- eDoc: push banks (Fidelity) never get the transactions pull — the
+                 customer sends the statement from the bank app and we only check
+                 whether it has arrived. -->
             <p class="mb-3 break-words !text-base text-gray-700">
-              Open your bank app and approve the statement request, then click the button below. Fetching transactions before authorising will fail.
+              {{
+                requiresRegisteredEmail
+                  ? 'Open your bank app and send your bank statement to BOI using the registered email you provided, then click the button below to check that it has arrived.'
+                  : 'Open your bank app and approve the statement request, then click the button below. Fetching transactions before authorising will fail.'
+              }}
             </p>
             <button
               type="button"
@@ -430,7 +439,11 @@ async function fetchTransactionsAfterAuthorization() {
               @click="fetchTransactionsAfterAuthorization"
             >
               <EdocProcessingSpinner v-if="fetchingTransactions" :size="14" class="text-white" />
-              {{ fetchingTransactions ? 'Fetching Transactions…' : 'I Have Authorized — Get Statement' }}
+              {{
+                fetchingTransactions
+                  ? (requiresRegisteredEmail ? 'Checking…' : 'Fetching Transactions…')
+                  : (requiresRegisteredEmail ? 'I Have Sent the Statement — Check' : 'I Have Authorized — Get Statement')
+              }}
             </button>
           </div>
         </template>
