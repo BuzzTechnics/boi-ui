@@ -1,9 +1,9 @@
 /** Item / asset row validators used in credit facility forms (mutate row error fields). */
 
 export function validateFinancedItemName(value: string, item: { name_error?: string }): void {
-  const pattern = /^[A-Za-z\s\-]+$/
+  const pattern = /^[A-Za-z0-9\s\-]+$/
   if (value && !pattern.test(value)) {
-    item.name_error = 'Item name can only contain letters, spaces, and hyphens'
+    item.name_error = 'Item name can only contain letters, numbers, spaces, and hyphens'
   } else {
     item.name_error = ''
   }
@@ -19,9 +19,9 @@ export function validateFinancedItemQuantity(value: string, item: { quantity_err
 }
 
 export function validateAssetName(value: string, asset: { name_error?: string }): void {
-  const pattern = /^[A-Za-z\s\-]+$/
+  const pattern = /^[A-Za-z0-9\s\-]+$/
   if (value && !pattern.test(value)) {
-    asset.name_error = 'Asset name can only contain letters, spaces, and hyphens'
+    asset.name_error = 'Asset name can only contain letters, numbers, spaces, and hyphens'
   } else {
     asset.name_error = ''
   }

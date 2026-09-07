@@ -144,7 +144,9 @@ const handleInput = (event: Event) => {
         decimalPart = decimalPart.slice(0, props.decimalPlaces);
     }
 
-    integerPart = integerPart.replace(/^0+/g, '') || '';
+    // Strip leading zeros but keep a lone "0" — 0 is a valid amount (e.g. a
+    // first-time applicant's "consolidated amount accessed"), not a blank field.
+    integerPart = integerPart.replace(/^0+(?=\d)/, '');
 
     let cleanValue = integerPart;
     if (decimalPart || numericValue.includes('.')) {
