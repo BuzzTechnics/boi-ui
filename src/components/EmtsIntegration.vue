@@ -542,7 +542,7 @@ async function fetchTransactionsAfterAuthorization() {
       </template>
     </div>
     <div v-if="account.edoc_status === 'failed'" class="text-sm text-red-600">
-      Statement retrieval failed. Please try again or upload manually.
+      {{ account.edoc_error || 'Statement retrieval failed. Please try again or upload manually.' }}
     </div>
   </div>
 </template>

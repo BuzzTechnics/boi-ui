@@ -432,8 +432,13 @@ function createAfterUpload(statement: BankStatementRecord) {
         }
         startPolling()
       })
-      .catch(() => {
+      .catch((err) => {
         statement.edoc_status = 'failed'
+        // Surface the actual reason eDoc/the backend gave (e.g. password-protected
+        // or invalid PDF) instead of falling back to the generic message.
+        const resp = (err as { response?: { data?: { edoc_error?: string; message?: string } } })?.response?.data
+        const reason = resp?.edoc_error || resp?.message
+        if (reason) statement.edoc_error = reason
       })
       .finally(unblockAfterDelay)
   }
