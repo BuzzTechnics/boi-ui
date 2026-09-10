@@ -178,7 +178,7 @@ async function consentAndAttach(edocBank: EdocBank, accountNumberDigits: string)
   const rawBankId = row.bankId ?? row.id
   const bankId = typeof rawBankId === 'number' ? rawBankId : parseInt(String(rawBankId), 10)
   if (!Number.isFinite(bankId) || bankId < 1) {
-    throw new Error('Invalid EDOC bank id for selected bank')
+    throw new Error('Selected bank is not supported for electronic statement retrieval')
   }
   // Make sure the row itself carries the customer's address too: boi-api's
   // observer auto-submit reads statement.email, not the consent we made here.

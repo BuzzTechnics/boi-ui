@@ -527,10 +527,10 @@ onUnmounted(() => {
           Loading supported banks…
         </p>
         <p v-else-if="showEdocBanksList && edocBanksError" class="mt-2 text-xs text-red-700">
-          Could not load the EDOC bank list. Check boi-api / <code class="rounded bg-red-50 px-0.5">/api/boi-api</code> proxy and network errors.
+          Could not load the list of supported banks. Please try again shortly.
         </p>
         <p v-else-if="showEdocBanksList && !enabledEdocBanksList.length" class="mt-2 text-xs text-blue-700">
-          No banks are returned for electronic retrieval (EDOC list is empty on the API).
+          No banks are currently available for electronic statement retrieval.
         </p>
       </div>
 
