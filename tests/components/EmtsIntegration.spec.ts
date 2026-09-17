@@ -245,3 +245,161 @@ describe('EmtsIntegration — registered-email banks (Fidelity)', () => {
     expect(wrapper.emitted('update:email')?.[0]?.[0]).toBe('customer@fidelity-user.ng')
   })
 })
+
+/**
+ * A consent eDoc has marked `Failed` is finished: every later call against it
+ * returns "Invalid Consent Status" no matter what OTP is typed. Before this, the
+ * id stayed on the row and the Verify button stayed armed, so the applicant read
+ * the failure as a mistyped code and tried again — 203 such calls across 41
+ * consents in 30 days, one of them re-sent 59 times in seven minutes.
+ *
+ * boi-api now flags those responses `terminal: true`. These pin what the card
+ * does with it: drop the consent, go back to the step that mints a new one, and
+ * say which button that is.
+ */
+describe('EmtsIntegration — a consent eDoc will not honour again', () => {
+  const terminalRejection = () => ({
+    response: {
+      status: 500,
+      data: {
+        success: false,
+        terminal: true,
+        message:
+          'This bank statement request has already been used or has expired, so your bank will not accept it again. Please start a new request.',
+      },
+    },
+  })
+
+  function makeFailingApi(rejection: unknown) {
+    const post = vi.fn(async (url: string) => {
+      if (url.includes('consent/transactions')) return Promise.reject(rejection)
+      if (url.includes('consent/initialize')) {
+        return { data: { success: true, data: { data: { consentId: 'consent-new' } } } }
+      }
+      return { data: { success: true, data: {} } }
+    })
+    return { post }
+  }
+
+  it('drops the dead consent so the next press cannot reuse it', async () => {
+    const account = baseAccount({ consent_id: 'dead-consent', showOtpInput: true, otp: '123456' })
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account,
+        edocBanks: [otpBank],
+        bankOptions: [bankOption],
+        api: makeFailingApi(terminalRejection()),
+        applicationId: 100,
+      },
+    })
+
+    await wrapper.findAll('button[type="button"]').find((b) => b.text().includes('Verify OTP'))!.trigger('click')
+    await flushPromises()
+
+    // The parent is told to forget it, and the typed code goes with it.
+    expect(wrapper.emitted('update:consentId')?.[0]?.[0]).toBe('')
+    expect(account.otp).toBe('')
+  })
+
+  it('names the button that starts a fresh request, per flow', async () => {
+    const otpCard = mount(EmtsIntegration, {
+      props: {
+        account: baseAccount({ consent_id: 'dead-consent', showOtpInput: true, otp: '123456' }),
+        edocBanks: [otpBank],
+        bankOptions: [bankOption],
+        api: makeFailingApi(terminalRejection()),
+        applicationId: 100,
+      },
+    })
+    await otpCard.findAll('button[type="button"]').find((b) => b.text().includes('Verify OTP'))!.trigger('click')
+    await flushPromises()
+
+    const otpMessage = String(otpCard.emitted('error')?.[0]?.[0])
+    expect(otpMessage).toContain('Please start a new request')
+    expect(otpMessage).toContain('Send OTP')
+
+    const bankAppCard = mount(EmtsIntegration, {
+      props: {
+        account: baseAccount({ consent_id: 'dead-consent' }),
+        edocBanks: [instructionBank],
+        bankOptions: [bankOption],
+        api: makeFailingApi(terminalRejection()),
+        applicationId: 100,
+      },
+    })
+    await bankAppCard.findAll('button[type="button"]').find((b) => b.text().includes('I Have Authorized'))!.trigger('click')
+    await flushPromises()
+
+    expect(String(bankAppCard.emitted('error')?.[0]?.[0])).toContain('Retrieve Statement')
+  })
+
+  it('returns the bank-app card to step 1 once the consent is gone', async () => {
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account: baseAccount({ consent_id: '' }),
+        edocBanks: [instructionBank],
+        bankOptions: [bankOption],
+        api: makeFailingApi(terminalRejection()),
+        applicationId: 100,
+      },
+    })
+
+    // consent_id is what gates the two steps; cleared, the card offers the
+    // button that mints a new consent rather than one that re-uses a dead id.
+    expect(wrapper.text()).toContain('Retrieve Statement')
+    expect(wrapper.text()).not.toContain('I Have Authorized')
+  })
+
+  it('leaves the consent alone when the failure is one a retry can still clear', async () => {
+    const account = baseAccount({ consent_id: 'live-consent', showOtpInput: true, otp: '123456' })
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account,
+        edocBanks: [otpBank],
+        bankOptions: [bankOption],
+        api: makeFailingApi({
+          response: {
+            status: 500,
+            data: {
+              success: false,
+              terminal: false,
+              message: 'That code has expired. Click "Send OTP" to have your bank email you a new one.',
+            },
+          },
+        }),
+        applicationId: 100,
+      },
+    })
+
+    await wrapper.findAll('button[type="button"]').find((b) => b.text().includes('Verify OTP'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('update:consentId')).toBeUndefined()
+    expect(account.otp).toBe('123456')
+    expect(String(wrapper.emitted('error')?.[0]?.[0])).toContain('That code has expired')
+  })
+
+  it('acts on the flag when it arrives on a 200 body rather than a rejection', async () => {
+    const account = baseAccount({ consent_id: 'dead-consent', showOtpInput: true, otp: '123456' })
+    const wrapper = mount(EmtsIntegration, {
+      props: {
+        account,
+        edocBanks: [otpBank],
+        bankOptions: [bankOption],
+        api: {
+          post: vi.fn(async (url: string) =>
+            url.includes('consent/transactions')
+              ? { data: { success: false, terminal: true, message: 'This request has expired. Please start a new request.' } }
+              : { data: { success: true, data: {} } }
+          ),
+        },
+        applicationId: 100,
+      },
+    })
+
+    await wrapper.findAll('button[type="button"]').find((b) => b.text().includes('Verify OTP'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('update:consentId')?.[0]?.[0]).toBe('')
+  })
+})

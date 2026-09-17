@@ -375,8 +375,14 @@ async function handleRemoveAccount(statement: BankStatementRecord) {
 }
 
 function onConsentId(statement: BankStatementRecord, consentId: string) {
+  // An empty id is EmtsIntegration discarding a consent eDoc has failed for good.
+  // The row has to forget the whole step: leaving showOtpInput on would park the
+  // card on an OTP box with nothing left to verify against. The blank is saved
+  // like any other change so a reload cannot resurrect the dead consent.
+  const discarded = consentId === ''
   statement.consent_id = consentId
-  statement.showOtpInput = true
+  statement.showOtpInput = !discarded
+  if (discarded) statement.otp = ''
   saveStatement(statement)
 }
 

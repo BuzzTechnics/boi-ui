@@ -150,6 +150,41 @@ const errMsg = (e: unknown) =>
   (e as Error)?.message ??
   'An unexpected error occurred'
 
+/**
+ * Whether the backend has told us this consent is finished for good.
+ *
+ * eDoc marks a consent `Failed` and then answers "Invalid Consent Status" to
+ * every later call against it, whatever OTP is typed. boi-api says so outright
+ * (`terminal: true`) rather than leaving us to pattern-match its prose. The flag
+ * can arrive either on a rejected response or on a 200 body, so look in both.
+ */
+const isTerminal = (source: unknown): boolean =>
+  (source as { response?: { data?: { terminal?: boolean } } })?.response?.data?.terminal === true ||
+  (source as { data?: { terminal?: boolean } })?.data?.terminal === true ||
+  (source as { terminal?: boolean })?.terminal === true
+
+/** The button that starts a fresh request, named as it reads on the card. */
+const restartAction = computed(() =>
+  hasBankInstructions.value ? '“Retrieve Statement”' : '“Send OTP”'
+)
+
+/**
+ * Throw away a consent eDoc will never honour again.
+ *
+ * Keeping it on the row is what made a dead request look like a mistyped code:
+ * the Verify button stayed armed, so the applicant tried again, and the same
+ * consent drew the same 400 — one was re-sent 59 times in seven minutes.
+ *
+ * Clearing it returns the card to step 1, whose button runs consentAndAttach and
+ * mints a new consent: the only route that can still succeed. The parent also
+ * persists the blank, so a reload cannot hand the dead consent back.
+ */
+function discardDeadConsent(message: string) {
+  props.account.otp = ''
+  emit('update:consentId', '')
+  emit('error', `${message} Click ${restartAction.value} below to do that.`)
+}
+
 const consentPayload = (email: string) => ({
   email,
   referenceId: `loan_${props.applicationId ?? 'new'}_${props.account.id}`,
@@ -232,10 +267,14 @@ async function submitOtp() {
       verificationCode: otp,
       bankStatementId: props.account.id,
     })
-    const data = res?.data as { success?: boolean; data?: { statement?: BankStatementRecord }; message?: string }
-    if (!data?.success) return emit('error', data?.message ?? 'Failed to retrieve transactions')
+    const data = res?.data as { success?: boolean; data?: { statement?: BankStatementRecord }; message?: string; terminal?: boolean }
+    if (!data?.success) {
+      const message = data?.message ?? 'Failed to retrieve transactions'
+      return isTerminal(data) ? discardDeadConsent(message) : emit('error', message)
+    }
     if (data.data?.statement) emit('statement-retrieved', data.data.statement)
   } catch (err) {
+    if (isTerminal(err)) return discardDeadConsent(errMsg(err))
     emit('error', errMsg(err))
   } finally {
     submittingOtp.value = false
@@ -286,10 +325,14 @@ async function fetchTransactionsAfterAuthorization() {
       verificationCode: '',
       bankStatementId: props.account.id,
     })
-    const data = res?.data as { success?: boolean; data?: { statement?: BankStatementRecord }; message?: string }
-    if (!data?.success) return emit('error', data?.message ?? 'Failed to retrieve transactions')
+    const data = res?.data as { success?: boolean; data?: { statement?: BankStatementRecord }; message?: string; terminal?: boolean }
+    if (!data?.success) {
+      const message = data?.message ?? 'Failed to retrieve transactions'
+      return isTerminal(data) ? discardDeadConsent(message) : emit('error', message)
+    }
     if (data.data?.statement) emit('statement-retrieved', data.data.statement)
   } catch (err) {
+    if (isTerminal(err)) return discardDeadConsent(errMsg(err))
     emit('error', errMsg(err))
   } finally {
     fetchingTransactions.value = false
