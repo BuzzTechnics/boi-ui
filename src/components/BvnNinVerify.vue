@@ -99,7 +99,12 @@ watch(
   { immediate: true },
 )
 
+// BVN and NIN are 11-digit numbers. `type="tel"` and `inputmode="numeric"` only hint
+// the keyboard — they don't stop letters being typed or pasted — so strip anything
+// that is not a digit as the value changes, and cap at 11.
 const emitUpdate = () => {
+  bvnValue.value = (bvnValue.value || '').replace(/\D/g, '').slice(0, 11)
+  ninValue.value = (ninValue.value || '').replace(/\D/g, '').slice(0, 11)
   emit('update:modelValue', { bvn: bvnValue.value, nin: ninValue.value })
 }
 
