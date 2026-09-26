@@ -3,12 +3,12 @@
     <input
       ref="phoneInput"
       class="py-2 px-3 border-gray-300 focus:border-primary focus:ring-primary rounded-md shadow-sm w-full block disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
-      :value="modelValue"
       type="tel"
       :required="required"
       :disabled="disabled"
-      :maxlength="15"
-      @input="process(($event.target as HTMLInputElement).value)"
+      :maxlength="20"
+      @input="emitNormalized"
+      @blur="emitNormalized"
     />
   </div>
 </template>
@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import intlTelInput from 'intl-tel-input'
 import 'intl-tel-input/build/css/intlTelInput.css'
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -38,14 +38,7 @@ const emit = defineEmits<{
 }>()
 
 const phoneInput = ref<HTMLInputElement | null>(null)
-let phoneInputInstance: ReturnType<typeof intlTelInput> | null = null
-
-const process = (value: string) => {
-  if (!value || !phoneInputInstance) return
-  const dialCode = '+' + phoneInputInstance.getSelectedCountryData().dialCode
-  const phoneNumber = value.startsWith(dialCode) ? value : dialCode + value.slice(-10)
-  emit('update:modelValue', phoneNumber)
-}
+let iti: ReturnType<typeof intlTelInput> | null = null
 
 const getIp = (callback: (iso2: string) => void) => {
   if (!props.ipinfoToken) {
@@ -58,6 +51,38 @@ const getIp = (callback: (iso2: string) => void) => {
     .catch(() => callback('ng'))
 }
 
+/**
+ * Always emit the number in international E.164 form (e.g. +2348012345678) so it
+ * is stored with its country code. intl-tel-input's getNumber() returns E.164
+ * once utils.js has loaded; before that (or when a partial number can't yet be
+ * parsed) we fall back to dial-code + typed national digits so a value is never
+ * emitted without the country code.
+ */
+const emitNormalized = () => {
+  if (!iti || !phoneInput.value) return
+  const typed = phoneInput.value.value.trim()
+  if (typed === '') {
+    emit('update:modelValue', '')
+    return
+  }
+
+  const e164 = iti.getNumber()
+  if (e164) {
+    emit('update:modelValue', e164)
+    return
+  }
+
+  const dialCode = iti.getSelectedCountryData().dialCode || '234'
+  const national = typed.replace(/\D+/g, '').replace(/^0+/, '')
+  emit('update:modelValue', national ? `+${dialCode}${national}` : '')
+}
+
+/** Render an existing E.164/international value into the field (flag + national part). */
+const seed = (value?: string) => {
+  if (!iti || !value) return
+  iti.setNumber(value)
+}
+
 onMounted(() => {
   if (!phoneInput.value) return
   const options: Parameters<typeof intlTelInput>[1] = {
@@ -66,6 +91,27 @@ onMounted(() => {
     preferredCountries: ['ng', 'us'],
     utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@17/build/js/utils.js',
   }
-  phoneInputInstance = intlTelInput(phoneInput.value, options)
+  iti = intlTelInput(phoneInput.value, options)
+  // Re-normalise when the user picks a different country from the flag dropdown.
+  phoneInput.value.addEventListener('countrychange', emitNormalized)
+  if (props.modelValue) seed(props.modelValue)
 })
+
+onBeforeUnmount(() => {
+  phoneInput.value?.removeEventListener('countrychange', emitNormalized)
+  iti?.destroy()
+  iti = null
+})
+
+// Reflect external modelValue changes (e.g. async prefill) into the field, but
+// never clobber what the user is actively typing.
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (!iti || !phoneInput.value) return
+    if (value && value !== iti.getNumber() && document.activeElement !== phoneInput.value) {
+      seed(value)
+    }
+  },
+)
 </script>

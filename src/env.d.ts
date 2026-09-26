@@ -9,6 +9,11 @@ declare module '*.vue' {
 declare module 'intl-tel-input' {
   interface IntlTelInputInstance {
     getSelectedCountryData(): { dialCode: string }
+    /** E.164 (e.g. +2348012345678) once utils.js has loaded; '' when unparseable. */
+    getNumber(): string
+    /** Render the flag + national portion from an E.164/international string. */
+    setNumber(number: string): void
+    destroy(): void
   }
   const intlTelInput: (
     input: HTMLInputElement,
