@@ -54,6 +54,8 @@ export interface EdocConsentInitializePayload {
   state?: string
   fundType?: string
   industrialSector?: string
+  /** Requested loan amount (NGN); eDoc displays it on their financial metrics report. */
+  loanAmount?: number
 }
 
 export interface EdocAttachAccountPayload {
