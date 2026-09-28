@@ -27,12 +27,12 @@
         placeholder="0.00"
       />
     </div>
-    <!-- Grouped-amount preview, always shown beneath an editable field (the field
-         itself shows raw digits so typing stays jank-free), so users can always read
-         the thousands-separated amount. Read-only/disabled fields already show the
-         grouped amount in the box, so no preview is needed there. -->
+    <!-- Grouped-amount preview shown beneath the field so users can always read the
+         thousands-separated amount. The box itself always shows raw digits (so typing
+         stays jank-free), so the preview is shown for read-only/disabled fields too —
+         they behave the same as editable fields, just non-interactive. -->
     <p
-      v-if="previewFormatted && !disabled && !readonly && formattedPreview"
+      v-if="previewFormatted && formattedPreview"
       class="mt-1 text-xs font-medium tabular-nums text-gray-500"
     >
       {{ formattedPreview }}
@@ -78,14 +78,12 @@ const forwardedAttrs = computed(() => {
   return rest
 })
 
-// Editable fields show the raw value so typing stays jank-free (no comma cursor
+// The box always shows the raw value so typing stays jank-free (no comma cursor
 // jumps) — the grouped amount is shown in the preview line beneath. Read-only and
-// disabled fields (e.g. computed totals) show the grouped amount in the box itself.
+// disabled fields (e.g. computed totals) render the same way, just non-interactive.
 const displayValue = computed(() => {
   const v = props.modelValue
   if (v == null || v === '') return ''
-  if (isNaN(Number(v))) return String(v)
-  if (props.disabled || props.readonly) return numeral(v).format('0,0.00')
   return String(v)
 })
 
