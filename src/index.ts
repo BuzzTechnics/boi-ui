@@ -16,6 +16,7 @@ export { default as CacRegistrationInput } from './components/CacRegistrationInp
 export { default as TinInput } from './components/TinInput.vue'
 export { default as MoneyInput } from './components/MoneyInput.vue'
 export { default as PortalMoneyInput } from './components/PortalMoneyInput.vue'
+export { default as NumberInput } from './components/NumberInput.vue'
 export { default as BvnNinVerify } from './components/BvnNinVerify.vue'
 export { default as PhoneInput } from './components/PhoneInput.vue'
 export { default as GsiMandateIntegration } from './components/GsiMandateIntegration.vue'

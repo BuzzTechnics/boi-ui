@@ -18,8 +18,6 @@
           group-hover:border-gray-400 read-only:bg-gray-50 focus:border-primary focus:outline-none focus:ring-0
           disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
         :value="displayValue"
-        @focus="focused = true"
-        @blur="focused = false"
         @input="onInput"
         @keypress="preventNonNumericInput"
         :readonly="readonly"
@@ -29,10 +27,12 @@
         placeholder="0.00"
       />
     </div>
-    <!-- Live grouped-amount preview while typing (the field itself shows raw digits
-         when focused to avoid cursor jumps), so users don't have to count zeros. -->
+    <!-- Grouped-amount preview, always shown beneath an editable field (the field
+         itself shows raw digits so typing stays jank-free), so users can always read
+         the thousands-separated amount. Read-only/disabled fields already show the
+         grouped amount in the box, so no preview is needed there. -->
     <p
-      v-if="previewFormatted && focused && formattedPreview"
+      v-if="previewFormatted && !disabled && !readonly && formattedPreview"
       class="mt-1 text-xs font-medium tabular-nums text-gray-500"
     >
       {{ formattedPreview }}
@@ -68,7 +68,6 @@ const emit = defineEmits<{
 }>()
 
 const input = ref<HTMLInputElement | null>(null)
-const focused = ref(false)
 
 // Forward consumer attrs (id, name, @input validators, etc.) to the inner <input>,
 // but drop class/style so a stray utility like `form-input` can't draw a second border
@@ -79,13 +78,15 @@ const forwardedAttrs = computed(() => {
   return rest
 })
 
-// While editing, show the raw value so typing stays jank-free (no comma cursor jumps).
-// When not focused, show the grouped, two-decimal amount.
+// Editable fields show the raw value so typing stays jank-free (no comma cursor
+// jumps) — the grouped amount is shown in the preview line beneath. Read-only and
+// disabled fields (e.g. computed totals) show the grouped amount in the box itself.
 const displayValue = computed(() => {
   const v = props.modelValue
-  if (focused.value) return v == null ? '' : String(v)
-  if (v == null || v === '' || isNaN(Number(v))) return ''
-  return numeral(v).format('0,0.00')
+  if (v == null || v === '') return ''
+  if (isNaN(Number(v))) return String(v)
+  if (props.disabled || props.readonly) return numeral(v).format('0,0.00')
+  return String(v)
 })
 
 // Grouped, symbol-prefixed amount for the live preview (empty until a valid number).
