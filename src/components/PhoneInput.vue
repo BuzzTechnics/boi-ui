@@ -15,8 +15,25 @@
 
 <script setup lang="ts">
 import intlTelInput from 'intl-tel-input'
-import 'intl-tel-input/build/css/intlTelInput.css'
+// Imported as a string (not a side-effect stylesheet) and injected at runtime so
+// the styles ship inside the bundle. In Vite library mode a plain CSS import is
+// extracted into a separate dist/boi-ui.css that the consuming app has to import
+// by hand; apps that don't (e.g. GLOW) rendered the country dropdown as a raw
+// list of every country. Self-injecting keeps the component's styles working
+// wherever it is used, with no CSS import required downstream.
+import intlTelInputCss from 'intl-tel-input/build/css/intlTelInput.css?inline'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+/** Inject the intl-tel-input stylesheet once per document, however many inputs mount. */
+const ITI_STYLE_ID = 'boi-ui-intl-tel-input-styles'
+const ensureIntlTelInputStyles = () => {
+  if (typeof document === 'undefined') return
+  if (document.getElementById(ITI_STYLE_ID)) return
+  const style = document.createElement('style')
+  style.id = ITI_STYLE_ID
+  style.textContent = intlTelInputCss
+  document.head.appendChild(style)
+}
 
 const props = withDefaults(
   defineProps<{
@@ -85,6 +102,7 @@ const seed = (value?: string) => {
 
 onMounted(() => {
   if (!phoneInput.value) return
+  ensureIntlTelInputStyles()
   const options: Parameters<typeof intlTelInput>[1] = {
     initialCountry: props.ipinfoToken ? 'auto' : 'ng',
     ...(props.ipinfoToken ? { geoIpLookup: getIp } : {}),
